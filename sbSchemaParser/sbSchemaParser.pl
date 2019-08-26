@@ -49,7 +49,6 @@ sub _process_yaml {
   my $file_path =   shift;
 
   my $files			=		_create_file_paths($config, $file_path);
-	my $yaml_github_web_link 	=   $config->{paths}->{github_org_path}.'/'.$config->{repository}.'/blob/master/'.$files->{input_dir}.'/'.$files->{input_name};
   
   print "Reading YAML file \"$files->{input_yaml}\"\n";
 
@@ -111,7 +110,7 @@ $config->{jekyll_excerpt_separator}
 ### Source
 
 * raw source [[JSON](./$files->{input_class}.json)] 
-* [Github]($yaml_github_web_link)
+* [Github]($files->{github})
 
 ### Attributes
 END
@@ -219,9 +218,10 @@ auto-generated and normal pages can be separated.
 	my @pathEls		=		split('/', $file_path);
 	my $fileName	=		pop @pathEls;
 	my $dirName		=		pop @pathEls;
-	
+	my $repoName	=		pop @pathEls;
 	my $class			=		$fileName;
 	$class				=~	s/\.\w+?$//;
+
 	return		{
 		input_yaml	=>	$file_path,
 		input_name	=>	$fileName,
@@ -229,16 +229,19 @@ auto-generated and normal pages can be separated.
 		input_dir		=>	$dirName,
 		exmpls_json => 	join('/', 
 											@pathEls,
+											$repoName,
 											$config->{paths}->{examples_dir},
 											$class.'-examples.json'
 										),
 		plain_md		=>	join('/', 
 											@pathEls,
+											$repoName,
 											$config->{paths}->{md_dir},
 											$class.'.md'
 										),
 		src_json 		=>	join('/', 
 											@pathEls,
+											$repoName,
 											$config->{paths}->{json_dir},
 											$class.'.json'
 										),
@@ -249,6 +252,13 @@ auto-generated and normal pages can be separated.
 		jekyll_md 	=> 	join('/', 
 											$config->{paths}->{md_web_doc_rel},
 											$config->{generator_prefix}.$class.'.md'
+										),
+		github 			=> 	join('/', 
+											$config->{paths}->{github_org_path},
+											$repoName,
+											'blob/master',
+											$dirName,
+											$fileName
 										)
 	};
 
