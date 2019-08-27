@@ -18,8 +18,8 @@ my $here_path		=		join('/', @here_path);
 my $config     	=   LoadFile($here_path.'/config.yaml') or die "¡No config.yaml file in this path!";
 bless $config;
 
-$config->{repository}	=		(split('/', $here_path))[-2];	# script resides in a dir in repo root
-$config->{here_path}	=		$here_path;
+$config->{here_path}			=		$here_path;
+$config->{git_root_rel}		=		$here_path.'/../..';
 
 # command line input
 my %args        =   @ARGV;
@@ -27,9 +27,8 @@ $args{-filter}	||= q{};
 $args{-cleanup}	||= "n";
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
-$config					=		_check_paths($config);
 _delete_generated_files($config);
-_process_input_dirs($config);
+_process_src($config);
 
 exit;
 
@@ -45,14 +44,27 @@ exit;
 
 sub _process_yaml {
 
-  my $config 		=   shift;
-  my $file_path =   shift;
+	my (
+		$config,
+		$file,
+		$repoName,
+		$dirName,
+		$fileName,
+		$out_web
+	)							=		@_;
 
-  my $files			=		_create_file_paths($config, $file_path);
+  my $files			=		_create_file_paths(
+											$config,
+											$file,
+											$repoName,
+											$dirName,
+											$fileName,
+											$out_web
+										);
   
-  print "Reading YAML file \"$files->{input_yaml}\"\n";
+  print "Reading YAML file \"$file\"\n";
 
-  my $data      =   LoadFile($files->{input_yaml});
+  my $data      =   LoadFile($file);
 
 =podmd
 The class name is extracted from the file's "title" value.
@@ -166,39 +178,6 @@ END
 ################################################################################
 ################################################################################
 
-sub _check_paths {
-
-=podmd
-The generation of file paths is based on the assumptions that:
-
-* the processing script (i.e. this file) resides in a "_tools" directory in the 
-root of a git repository (name of directory not relevant)
-* that other directories are defined relative to it
-
-=cut
-
-  my $config 		=   shift;
-
-	foreach my $path (grep { /_rel/ } keys %{$config->{paths}}) {
-		$config->{paths}->{$path}	=		$config->{here_path}.'/'.$config->{paths}->{$path};
-		if (! -d $config->{paths}->{$path}) {
-			print <<END;
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-Path "$path" does not exist at 
-    $config->{paths}->{$path}
-Dying on the spot ...
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-END
-	
-		}
-	}
-	
-	return $config;
-	
-}
-
 ################################################################################
 ################################################################################
 
@@ -214,47 +193,56 @@ auto-generated and normal pages can be separated.
 
 =cut
 
-	my ($config, $file_path)	=		@_;
-	my @pathEls		=		split('/', $file_path);
-	my $fileName	=		pop @pathEls;
-	my $dirName		=		pop @pathEls;
-	my $repoName	=		pop @pathEls;
+	my (
+		$config,
+		$file,
+		$repoName,
+		$dirName,
+		$fileName,
+		$out_web
+	)							=		@_;
 	my $class			=		$fileName;
 	$class				=~	s/\.\w+?$//;
 
 	return		{
-		input_yaml	=>	$file_path,
+		input_yaml	=>	$file,
 		input_name	=>	$fileName,
 		input_class	=>	$class,
 		input_dir		=>	$dirName,
+		input_repo	=>	$repository,
 		exmpls_json => 	join('/', 
-											@pathEls,
+											$config->{git_root_rel},
 											$repoName,
-											$config->{paths}->{examples_dir},
+											$config->{paths}->{out_dirnames}->{examples},
 											$class.'-examples.json'
 										),
 		plain_md		=>	join('/', 
-											@pathEls,
+											$config->{git_root_rel},
 											$repoName,
-											$config->{paths}->{md_dir},
+											$config->{paths}->{out_dirnames}->{markdown},
 											$class.'.md'
 										),
 		src_json 		=>	join('/', 
-											@pathEls,
+											$config->{git_root_rel},
 											$repoName,
-											$config->{paths}->{json_dir},
+											$config->{paths}->{out_dirnames}->{json},
 											$class.'.json'
 										),
 		web_src_json =>	join('/', 
-											$config->{paths}->{md_web_schemas_rel},
+											$config->{git_root_rel},
+											$out_web->{repository},
+											$out_web->{dirs}->{schemas},
 											$class.'.json'
 										),
 		jekyll_md 	=> 	join('/', 
-											$config->{paths}->{md_web_doc_rel},
-											$config->{generator_prefix}.$class.'.md'
+											$config->{git_root_rel},
+											$out_web->{repository},
+											$repoName,
+											$out_web->{dirs}->{jekyll},
+											$class.'.md'
 										),
 		github 			=> 	join('/', 
-											$config->{paths}->{github_org_path},
+											$config->{paths}->{github_web},
 											$repoName,
 											'blob/master',
 											$dirName,
@@ -308,22 +296,32 @@ sub _delete_generated_files {
 ################################################################################
 ################################################################################
 
-sub _process_input_dirs {
+sub _process_src {
 
 	my $config		=		shift;
 
-	foreach my $src_dir (@{ $config->{paths}->{'src_dirs'} }) {
-		opendir DIR, $config->{here_path}.'/'.$src_dir;
-		foreach (grep{ /ya?ml$/ } readdir(DIR)) {
-			_process_yaml(
-				$config,
-				join('/', 
-					$config->{here_path},
-					$src_dir,
-					$_
-				),
-				$_
-			);
+	foreach my $src (@{ $config->{paths}->{'src'} }) {
+		my $src_dir = 	join('/',
+											$config->{here_path},
+											'../..',
+											$src->{repository},
+											$src->{dir}											
+										);
+		opendir DIR, $src_dir;
+		foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
+			foreach my $out_web (@{ $config->{paths}->{'out_web'} }) {
+				_process_yaml(
+					$config,
+					join('/', 
+						$src_dir,
+						$schema
+					),
+					$src->{repository},
+					$src->{dir},
+					$schema,
+					$out_web
+				);
+			}
 		}
 		close DIR;
 	}

@@ -1,15 +1,22 @@
 ---
 paths:
-  src_dirs:
-    - '../../blocks/src'
-    - '../../playground/src'
-  json_dir: 'json'
-  examples_dir: 'example_data'
-  md_dir: 'doc'
-  md_web_doc_rel: '../../ga4gh-schemablocks.github.io/pages/_schemas/ga4gh'
-  md_web_schemas_rel: '../../ga4gh-schemablocks.github.io/schemas/ga4gh'
-  md_web_doc_link: '/schemas/ga4gh'
-  github_org_path: 'https://github.com/ga4gh-schemablocks'
+  github_web: 'https://github.com/ga4gh-schemablocks'
+  src:
+    - repository: blocks
+      dir: src
+    - repository: playground
+      dir: src
+  out_dirnames:
+    json: json
+    markdown: doc
+    examples: example_data
+  out_web:
+    - org: 'ga4gh-schemablocks'
+      repository: 'ga4gh-schemablocks.github.io'
+      dirs:
+        jekyll: 'pages/_schemas/ga4gh'
+        schemas: 'schemas/ga4gh'
+        link: 'schemas/ga4gh'
 generator_prefix: '+generated__'
 jekyll_excerpt_separator: "<!--more-->"
 prefix_expansions:
