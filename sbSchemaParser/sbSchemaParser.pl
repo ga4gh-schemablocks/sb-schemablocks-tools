@@ -74,7 +74,7 @@ markdown document.
 
 	my $output		=		{
 		md					=>	q{},
-		jekyll_head	=>	_create_jekyll_header($config, $data),
+		jekyll_head	=>	_create_jekyll_header($config, $files),
 	};
 
   $output->{md} .=  <<END;
@@ -240,7 +240,15 @@ auto-generated and normal pages can be separated.
 											'blob/master',
 											$dirName,
 											$fileName
-										)
+										),
+		web_link_json => 	join('/',
+											$out_web->{web}->{schemas_rel},
+											$class.'.json'
+										),
+		doc_link_html => 	join('/',
+											$out_web->{web}->{html_rel},
+											$class.'.html'
+										),
 	};
 
 }
@@ -415,12 +423,12 @@ sub _format_property_type_html {
 sub _create_jekyll_header {
 
 	my $config		=		shift;
-	my $data			=		shift;
+	my $files			=		shift;
 	return 	<<END;
 ---
-title: $data->{title}
+title: $files->{input_class}
 layout: default
-permalink: "$config->{paths}->{md_web_doc_link}/$data->{title}.html"
+permalink: "$files->{doc_link_html}"
 excerpt_separator: $config->{jekyll_excerpt_separator}
 category:
   - schemas
