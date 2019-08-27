@@ -3,13 +3,13 @@ paths:
   github_web: 'https://github.com/ga4gh-schemablocks'
   src:
     - repository: blocks
-      dir: src
+      dir: schemas
     - repository: playground
-      dir: src
+      dir: schemas
   out_dirnames:
     json: json
     markdown: doc
-    examples: example_data
+    examples: examples
   out_web:
     - org: 'ga4gh-schemablocks'
       repository: 'ga4gh-schemablocks.github.io'
