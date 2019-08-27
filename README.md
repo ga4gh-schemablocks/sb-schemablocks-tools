@@ -16,14 +16,15 @@ repositories which are being parsed by _sbSchemaParser_ is shown below.
 {S}[B] code repositories adhere a consistent structure & naming:
 
 ```
-sb-code       # each of the code repositories
+sb-code           # each of the code repositories
   |
-  |- source   # original code
-  |- working  # for editing, temporary...
-  |- schemas  # JSON Schema files as YAML; read to produce the output files
-  |- json     # .json version of the schema, generated from YAML file
-  |- examples # .json example data, generated from inline examples in schema
-  |- doc      # .md documentation, generated from inline documentation in schema
+  |- source       # original code
+  |- working      # for editing, temporary...
+  |- schemas      # JSON Schema files as YAML; read to produce the output files
+  |- generated    # contains files generated from main schema YAML files
+      |- json     # .json version of the schema
+      |- examples # .json example data, from inline examples
+      |- doc      # .md documentation, from inline documentation
 ```
 
 Here  
