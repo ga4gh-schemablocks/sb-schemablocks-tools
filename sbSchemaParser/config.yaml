@@ -3,6 +3,10 @@ paths:
   github_web: 'https://github.com/ga4gh-schemablocks'
   site_web: 'https://schemablocks.org'
   src:
+    - repository: sb-phenopackets
+      dir: schemas
+    - repository: sb-phenopackets
+      dir: working
     - repository: blocks
       dir: schemas
     - repository: playground

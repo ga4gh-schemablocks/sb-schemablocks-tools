@@ -40,31 +40,82 @@ exit;
 ################################################################################
 
 ################################################################################
+################################################################################
+
+sub _process_src {
+
+	my $config		=		shift;
+
+	foreach my $src (@{ $config->{paths}->{'src'} }) {
+		my $src_dir = 	join('/',
+											$config->{here_path},
+											'../..',
+											$src->{repository},
+											$src->{dir}
+										);
+		opendir DIR, $src_dir;
+		foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
+			foreach my $out_web (@{ $config->{paths}->{'out_web'} }) {
+			
+				my $paths	=	{
+					schema_file		=>	$schema,
+					schema_path		=>	$src_dir.'/'.$schema,
+					schema_dir		=>	$src->{dir},
+					schema_repo		=>	$src->{repository},
+					web_repo			=>	$out_web->{repository},
+					web_jekylldir	=>	$out_web->{dirs}->{jekyll},
+					web_schemadir	=>	$out_web->{dirs}->{schemas},
+					link_schema		=>	$out_web->{web}->{schemas_rel},
+					link_html			=>	$out_web->{web}->{html_rel},
+				};
+			
+				_process_yaml($config, $paths);
+			}
+		}
+		close DIR;
+	}
+
+}
+
+
+################################################################################
 # main file specific process
 ################################################################################
 
 sub _process_yaml {
 
 	my $config		=		shift;
-	my $files			=		shift;
+	my $paths			=		shift;
 
-  print "Reading YAML file \"$files->{input_yaml}\"\n";
+	bless $paths;
+  print "Reading YAML file \"$paths->{schema_path}\"\n";
 
-  my $data      =   LoadFile($files->{input_yaml});
+  my $data      =   LoadFile($paths->{schema_path});
 
 =podmd
-The class name should correspond to the file's "title" value.
+The class name is derived from the file's "$id" value, assuming a canonical 
+path structure with the class name post-pended with a version:
+
+```
+"$id": https://schemablocks.org/schemas/ga4gh/Phenopacket/v0.0.1
+```
 Processing is skipped if the class name does not consist of word character, or
 if a filter had been provided and the class name doesn't match.
 
 =cut
 
-  _check_class_name($files->{input_class}, $data->{title});
-
   if ($data->{title} !~ /^\w+?$/) { return }
 	if ($args{-filter} =~ /.../) {
 		if ($data->{title} !~ /$args{-filter}/) {
 			return } }
+  
+	$paths->_create_file_paths($config, $data);
+  foreach my $outFile (grep{ /outfile_\w*?json/} keys %{ $paths }) {
+    _export_outfile($paths->{$outFile});
+  }
+  
+  if ($data->{meta}->{sb_status} !~ /\w/) {
+  	return }
 
 =podmd
 The documentation is extracted from the $data object and formatted into a
@@ -74,7 +125,7 @@ markdown document.
 
 	my $output		=		{
 		md					=>	q{},
-		jekyll_head	=>	_create_jekyll_header($config, $files),
+		jekyll_head	=>	_create_jekyll_header($config, $paths),
 	};
 
   $output->{md} .=  <<END;
@@ -110,8 +161,8 @@ $config->{jekyll_excerpt_separator}
 
 ### Source
 
-* raw source [[JSON](./$files->{input_class}.json)]
-* [Github]($files->{github_link})
+* raw source [[JSON](./$paths->{class}.json)]
+* [Github]($paths->{github_link})
 
 ### Attributes
 END
@@ -136,17 +187,11 @@ END
 
 =cut
 
-	$files->{outfile_exmpls_json}->{content}  =   JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} )."\n";
-	$files->{outfile_plain_md}->{content}     =   $output->{md};
-	$files->{outfile_src_json}->{content}     =   JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data)."\n";
-	$files->{outfile_web_src_json}->{content} =   JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data)."\n";
-	$files->{outfile_jekyll_md}->{content}    =   $output->{jekyll_head}.$output->{md}."\n";
+	$paths->{outfile_plain_md}->{content}     =   $output->{md};
+	$paths->{outfile_jekyll_current_md}->{content}    =   $output->{jekyll_head}.$output->{md}."\n";
 
-  foreach my $outFile (grep{ /outfile/} keys %{ $files }) {
-    print "writing $files->{$outFile}->{path}\n";
-    open  (FILE, ">", $files->{$outFile}->{path}) || warn '!!! output file '. $files->{$outFile}->{path}.' could not be created !!!';
-    print FILE  $files->{$outFile}->{content}."\n";
-    close FILE;
+  foreach my $outFile (grep{ /outfile_\w+?_md/} keys %{ $paths }) {
+    _export_outfile($paths->{$outFile});
   }
 
 }
@@ -172,84 +217,105 @@ auto-generated and normal pages can be separated.
 
 =cut
 
-	my (
-		$config,
-		$file,
-		$repoName,
-		$dirName,
-		$fileName,
-		$out_web
-	)							=		@_;
-	my $class			=		$fileName;
-	$class				=~	s/\.\w+?$//;
+	my $paths			=		shift;
+	my $config		=		shift;
+	my $data			=		shift;
 
-	return		{
-		input_yaml	=>	$file,
-		input_name	=>	$fileName,
-		input_class	=>	$class,
-		input_dir		=>	$dirName,
-		input_repo	=>	$repository,
-		outfile_exmpls_json => 	{
-			path			=>	join('/',
-											$config->{git_root_rel},
-											$repoName,
-											$config->{paths}->{out_dirnames}->{examples},
-											$class.'-examples.json'
-										),
-			content		=>	q{}
-		},
-		outfile_plain_md		=> 	{
-			path			=>	join('/',
-											$config->{git_root_rel},
-											$repoName,
-											$config->{paths}->{out_dirnames}->{markdown},
-											$class.'.md'
-										),
-			content		=>	q{}
-		},
-		outfile_src_json 		=> 	{
-			path			=>	join('/',
-											$config->{git_root_rel},
-											$repoName,
-											$config->{paths}->{out_dirnames}->{json},
-											$class.'.json'
-										),
-			content		=>	q{}
-		},
-		outfile_web_src_json => 	{
-			path			=>	join('/',
-											$config->{git_root_rel},
-											$out_web->{repository},
-											$out_web->{dirs}->{schemas},
-											$class.'.json'
-										),
-			content		=>	q{}
-		},
-		outfile_jekyll_md 	=> 	{
-			path			=>	join('/',
-											$config->{git_root_rel},
-											$out_web->{repository},
-											$out_web->{dirs}->{jekyll},
-											$config->{generator_prefix}.$class.'.md'
-										),
-			content		=>	q{}
-		},
-		github_link => 	join('/',
-											$config->{paths}->{github_web},
-											$repoName,
-											'blob/master',
-											$dirName,
-											$fileName
-										),
-		web_link_json => 	join('/',
-											$out_web->{web}->{schemas_rel},
-											$class.'.json'
-										),
-		doc_link_html => 	join('/',
-											$out_web->{web}->{html_rel},
-											$class.'.html'
-										),
+	my @id_comps	=		split('/', $data->{'$id'});	
+	my $sbVersion	=		pop @id_comps;
+	my $sbClass		=		pop @id_comps;
+
+	my $fileClass	=		$paths->{schema_file};
+	$fileClass		=~	s/\.\w+?$//;
+
+	_check_class_name($sbClass, $fileClass);
+	
+	$paths->{class}		=		$sbClass;
+	$paths->{outfile_exmpls_json} 	= 	{
+		path				=>	join('/',
+										$config->{git_root_rel},
+										$paths->{schema_repo},
+										$config->{paths}->{out_dirnames}->{examples},
+										$sbClass.'-examples.json'
+									),
+		content			=>	JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} ),
 	};
+	$paths->{outfile_plain_md} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{schema_repo},
+										$config->{paths}->{out_dirnames}->{markdown},
+										$sbClass.'.md'
+									),
+		content		=>	q{}
+	};
+	$paths->{outfile_src_json_current} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{schema_repo},
+										$config->{paths}->{out_dirnames}->{json},
+										'current',
+										$sbClass.'.json'
+									),
+		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+	};
+	$paths->{outfile_src_json_versioned} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{schema_repo},
+										$config->{paths}->{out_dirnames}->{json},
+										$sbVersion,
+										$sbClass.'.json'
+									),
+		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+	};
+	$paths->{outfile_web_src_json_current} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{web_repo},
+										$paths->{web_schemadir},
+										'current',
+										$sbClass.'.json'
+									),
+		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+	};
+	$paths->{outfile_web_src_json_versioned} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{web_repo},
+										$paths->{web_schemadir},
+										$sbVersion,
+										$sbClass.'.json'
+									),
+		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+	};
+	$paths->{outfile_jekyll_current_md} 	= 	{
+		path			=>	join('/',
+										$config->{git_root_rel},
+										$paths->{web_repo},
+										$paths->{web_jekylldir},
+										$config->{generator_prefix}.$sbClass.'.md'
+									),
+		content		=>	q{}
+	};
+	$paths->{github_link} 		= 	join('/',
+		$config->{paths}->{github_web},
+		$paths->{schema_repo},
+		'blob/master',
+		$paths->{schema_dir},
+		$paths->{schema_file}
+	);
+	$paths->{web_link_json} 	= 	join('/',
+		$paths->{link_schema},
+		'current',
+		$sbClass.'.json'
+	);
+	$paths->{doc_link_html} 	= 	join('/',
+		$paths->{link_html},
+		$sbClass.'.html'
+	);
+	
+	return $paths;
 
 }
 
@@ -258,57 +324,22 @@ auto-generated and normal pages can be separated.
 
 sub _check_class_name {
 
-	my ($file_name, $class)		=		@_;
+	my $sbClass		=		shift;
+	my $fileClass	=		shift;
 
-  if ($file_name ne $class) {
+  if ($sbClass ne $fileClass) {
 		print <<END;
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 Mismatch between file name
-	$file_name
-and class name from "title" parameter
-	$class
+	$fileClass
+and class name from "\$id" parameter
+	$sbClass
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 END
 
   }
-}
-
-################################################################################
-################################################################################
-
-sub _process_src {
-
-	my $config		=		shift;
-
-	foreach my $src (@{ $config->{paths}->{'src'} }) {
-		my $src_dir = 	join('/',
-											$config->{here_path},
-											'../..',
-											$src->{repository},
-											$src->{dir}
-										);
-		opendir DIR, $src_dir;
-		foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
-			foreach my $out_web (@{ $config->{paths}->{'out_web'} }) {
-				my $files		=	_create_file_paths(
-					$config,
-					join('/',
-						$src_dir,
-						$schema
-					),
-					$src->{repository},
-					$src->{dir},
-					$schema,
-					$out_web
-				);
-				_process_yaml($config, $files);
-			}
-		}
-		close DIR;
-	}
-
 }
 
 ################################################################################
@@ -426,7 +457,7 @@ sub _create_jekyll_header {
 	my $files			=		shift;
 	return 	<<END;
 ---
-title: $files->{input_class}
+title: $files->{class}
 layout: default
 permalink: "$files->{doc_link_html}"
 excerpt_separator: $config->{jekyll_excerpt_separator}
@@ -438,6 +469,23 @@ tags:
 
 END
 
+}
+
+################################################################################
+################################################################################
+
+sub _export_outfile {
+	
+	my $fileObj		=		shift;
+
+	print "writing $fileObj->{path}\n";
+	my $dir			=		$fileObj->{path};
+	$dir				=~	s/\/[^\/]+?\.\w+?$//;
+	mkdir $dir;
+	open  (FILE, ">", $fileObj->{path}) || warn '!!! output file '. $fileObj->{path}.' could not be created !!!';
+	print FILE  $fileObj->{content}."\n";
+	close FILE;
+	
 }
 
 ################################################################################
