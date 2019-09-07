@@ -1,0 +1,22 @@
+output_dir: '../../ga4gh-schemablocks.github.io/pages/_doc'
+output_pre: '+generated-doc'
+category: howto
+tags:
+  - code
+  - documentation
+  - tools
+md_starts:
+  - '^=podmd'               # Perl
+  - '^\/\*podmd'            # JavaScript
+  - '^# podmd'              # Python
+md_stops:
+  - '^=cut'
+  - '^# end_podmd'
+  - 'end_podmd\*\/'
+packages:
+  sbSchemaParser:
+    input: '../sbSchemaParser'
+    web_source_link: 'https://github.com/ga4gh-schemablocks/tools/tree/master/sbSchemaParser'
+    extensions:
+      - .pl
+    language: Perl

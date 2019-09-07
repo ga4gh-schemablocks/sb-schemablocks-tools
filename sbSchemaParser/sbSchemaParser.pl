@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
-use Cwd qw(abs_path);
+use Cwd qw(abs_path realpath);
+use File::Spec::Functions qw(catdir catfile);
 use JSON::XS;
 use YAML::XS qw(LoadFile DumpFile);
 use Data::Dumper;
@@ -9,20 +10,90 @@ $Data::Dumper::Sortkeys = 	1;
 binmode STDOUT, ":utf8";
 my @here_path  	=   split('/', abs_path($0));
 pop @here_path;
-my $here_path		=		join('/', @here_path);
+my $here_path		=		catdir(@here_path);
 my $config     	=   LoadFile($here_path.'/config.yaml') or die "¡No config.yaml file in this path!";
 bless $config;
 
 =podmd
+The `sbSchemaParser.pl` Perl script parses YAML schema definition scripts 
+written in JSON Schema and using GA4GH SchemaBlocks {S}[B] attributes and 
+structure, into 
+
+* JSON versions of the schemas (unprocessed), to serve as the reference
+schema versions
+* Markdown documentation, both in plain Markdown and as sources for "Jekyll" 
+based Markdown => HTML generation by Github Pages (or a local installation)
+* example `.json` data files, from the inline `examples`
+
 The output files are generated relative to the script path. This assumes a
 directory structure, in which the different repositories are contained in the
 same root (i.e. organization) directory, and the script itself is inside a
-first order directory in one of the repositories (e.g. `/my-repo/tools/`).
+first order directory in one of the repositories. The specific names of all of 
+the directories can be modified in `config.yaml`:
+
+```
+this-organization
+  |
+  |-- tools
+  |     |
+  |     |-- sbSchemaParser
+  |           |-- sbSchemaParser.pl # this file
+  |           |-- config.yaml				# in- and output path definitions
+  |
+  |-- blocks                        # example for (1 or 1+) schema repositories
+  |     |
+  |     |-- schemas
+  |     |     |-- Schema.yaml
+  |     |     |-- OtherSchema.yaml
+  |     |     |-- ...
+  |     |
+  |     |-- working
+  |     |     |-- SomethingNew.yaml     
+  |     |     |-- ...
+  |     |     
+  |     |-- generated               # config.yaml -> "out_dirnames"
+  |           |
+  |           |-- doc
+  |           |     |-- Schema.md
+  |           |     |-- OtherSchema.md
+  |           |     |-- ...
+  |           |
+  |           |-- json
+  |           |     |    
+  |           |     |-- current
+  |           |     |     |-- Schema.json
+  |           |     |     |-- ...
+  |           |     |    
+  |           |     |-- v0.0.1
+  |           |     |     |-- Schema.json
+  |           |     |     |-- ...
+  |           |     |    
+  |           |     |-- v... 
+  |           |
+  |           |-- examples
+  |   
+  |-- this-organization.github.io   # web repository (Jekyll based)
+        |
+        |-- (out_web.dirs.jekyll)
+        |     |-- Schema.md
+        |     |-- ...
+        |
+        |-- (out_web.dirs.schemas)
+              |-- current
+              |     |-- Schema.json
+              |     |-- ...
+              |    
+              |-- v0.0.1
+              |     |-- Schema.json
+              |     |-- ...
+              |    
+              |-- v...
+```
 
 =cut
 
 $config->{here_path}		=		$here_path;
-$config->{git_root_rel}	=		$here_path.'/../..';
+$config->{git_root_dir}	=		realpath($here_path.'/../..');
 
 # command line input
 my %args        =   @ARGV;
@@ -47,9 +118,8 @@ sub _process_src {
 	my $config		=		shift;
 
 	foreach my $src (@{ $config->{paths}->{'src'} }) {
-		my $src_dir = 	join('/',
-											$config->{here_path},
-											'../..',
+		my $src_dir = 	catdir(
+											$config->{git_root_dir},
 											$src->{repository},
 											$src->{dir}
 										);
@@ -59,7 +129,7 @@ sub _process_src {
 			
 				my $paths	=	{
 					schema_file		=>	$schema,
-					schema_path		=>	$src_dir.'/'.$schema,
+					schema_path		=>	catfile($src_dir, $schema),
 					schema_dir		=>	$src->{dir},
 					schema_repo		=>	$src->{repository},
 					web_repo			=>	$out_web->{repository},
@@ -159,9 +229,9 @@ configuration file and links e.g. the ORCID id to its web address.
 
 $config->{jekyll_excerpt_separator}
 
-### Source
+### Source ($paths->{version})
 
-* raw source [[JSON](./$paths->{class}.json)]
+* raw source [[JSON](./current/$paths->{class}.json)]
 * [Github]($paths->{github_link})
 
 ### Attributes
@@ -231,77 +301,79 @@ auto-generated and normal pages can be separated.
 	_check_class_name($sbClass, $fileClass);
 	
 	$paths->{class}		=		$sbClass;
+	$paths->{version}	=		$sbVersion;
 	$paths->{outfile_exmpls_json} 	= 	{
-		path				=>	join('/',
-										$config->{git_root_rel},
-										$paths->{schema_repo},
-										$config->{paths}->{out_dirnames}->{examples},
-										$sbClass.'-examples.json'
-									),
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{schema_repo},
+											$config->{paths}->{out_dirnames}->{examples},
+											$sbClass.'-examples.json'
+										),
 		content			=>	JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} ),
 	};
 	$paths->{outfile_plain_md} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{schema_repo},
-										$config->{paths}->{out_dirnames}->{markdown},
-										$sbClass.'.md'
-									),
-		content		=>	q{}
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{schema_repo},
+											$config->{paths}->{out_dirnames}->{markdown},
+											$sbClass.'.md'
+										),
+		content			=>	q{}
 	};
 	$paths->{outfile_src_json_current} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{schema_repo},
-										$config->{paths}->{out_dirnames}->{json},
-										'current',
-										$sbClass.'.json'
-									),
-		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{schema_repo},
+											$config->{paths}->{out_dirnames}->{json},
+											'current',
+											$sbClass.'.json'
+										),
+		content			=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
 	$paths->{outfile_src_json_versioned} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{schema_repo},
-										$config->{paths}->{out_dirnames}->{json},
-										$sbVersion,
-										$sbClass.'.json'
-									),
-		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{schema_repo},
+											$config->{paths}->{out_dirnames}->{json},
+											$sbVersion,
+											$sbClass.'.json'
+										),
+		content			=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
 	$paths->{outfile_web_src_json_current} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{web_repo},
-										$paths->{web_schemadir},
-										'current',
-										$sbClass.'.json'
-									),
-		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{web_repo},
+											$paths->{web_schemadir},
+											'current',
+											$sbClass.'.json'
+										),
+		content			=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
 	$paths->{outfile_web_src_json_versioned} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{web_repo},
-										$paths->{web_schemadir},
-										$sbVersion,
-										$sbClass.'.json'
-									),
-		content		=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{web_repo},
+											$paths->{web_schemadir},
+											$sbVersion,
+											$sbClass.'.json'
+										),
+		content			=>	JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
 	$paths->{outfile_jekyll_current_md} 	= 	{
-		path			=>	join('/',
-										$config->{git_root_rel},
-										$paths->{web_repo},
-										$paths->{web_jekylldir},
-										$config->{generator_prefix}.$sbClass.'.md'
-									),
-		content		=>	q{}
+		path				=>	catdir(
+											$config->{git_root_dir},
+											$paths->{web_repo},
+											$paths->{web_jekylldir},
+											$config->{generator_prefix}.$sbClass.'.md'
+										),
+		content			=>	q{}
 	};
 	$paths->{github_link} 		= 	join('/',
 		$config->{paths}->{github_web},
 		$paths->{schema_repo},
-		'blob/master',
+		'blob',
+		'master',
 		$paths->{schema_dir},
 		$paths->{schema_file}
 	);
@@ -439,6 +511,7 @@ sub _format_property_type_html {
 		my $yaml		=		$typeLab;
 		my $html		=		$typeLab;
 		$html				=~	s/\.\w+?$/.html/;
+		$html				=~	s/v\d+?\.\d+?\.\d+?\///;
 		$typeLab		.=	' [<a href="'.$yaml.'" target="_BLANK">SRC</a>] [<a href="'.$html.'" target="_BLANK">HTML</a>]' }
 
 	if ($type =~ /array/) {
@@ -459,7 +532,7 @@ sub _create_jekyll_header {
 ---
 title: $files->{class}
 layout: default
-permalink: "$files->{doc_link_html}"
+permalink: "$paths->{doc_link_html}"
 excerpt_separator: $config->{jekyll_excerpt_separator}
 category:
   - schemas
