@@ -210,8 +210,9 @@ if a filter had been provided and the class name doesn't match.
   	return }
 
 =podmd
-The documentation is extracted from the $data object and formatted into a
-markdown document.
+The documentation is extracted from the YAML schema file and formatted into
+markdown content, both for a plain `.md` file in the output directories of 
+the original repository (`out_dirnames.markdown`) and for the file for the Jekyll webpage generator.
 
 =cut
 
