@@ -20,3 +20,9 @@ packages:
     extensions:
       - .pl
     language: Perl
+  podMD:
+    input: '../podMD'
+    web_source_link: 'https://github.com/ga4gh-schemablocks/tools/tree/master/podMD'
+    extensions:
+      - .pl
+    language: Perl

@@ -1,29 +1,26 @@
 ---
-paths:
-  github_web: 'https://github.com/ga4gh-schemablocks'
-  site_web: 'https://schemablocks.org'
-  src:
-    - repository: sb-phenopackets
-      dir: schemas
-    - repository: sb-phenopackets
-      dir: working
-    - repository: blocks
-      dir: schemas
-    - repository: playground
-      dir: schemas
-  out_dirnames:
-    json: generated/json
-    markdown: generated/doc
-    examples: generated/examples
-  out_web:
-    - org: 'ga4gh-schemablocks'
-      repository: 'ga4gh-schemablocks.github.io'
-      dirs:
-        jekyll: 'pages/_schemas/ga4gh'
-        schemas: 'schemas/ga4gh'
-      web:
-        schemas_rel: "/schemas/ga4gh"
-        html_rel: "/schemas/ga4gh"
+github_organisation: ga4gh-schemablocks
+site_domain_name: schemablocks.org
+url: 'https://schemablocks.org'
+tools_repo: tools
+schema_repos:
+  blocks:
+    - schemas
+  playground:
+    - schemas
+  sb-phenopackets:
+    - schemas
+    - working
+out_dirnames:
+  json: generated/json
+  markdown: generated/doc
+  examples: generated/examples
+webdocs:
+  repo: 'ga4gh-schemablocks.github.io'
+  jekylldir: 'pages/_schemas/ga4gh'
+  schemadir: 'schemas/ga4gh'
+  web_schemas_rel: "/schemas/ga4gh"
+  web_html_rel: "/schemas/ga4gh"
 generator_prefix: '+generated__'
 jekyll_excerpt_separator: "<!--more-->"
 prefix_expansions:
@@ -31,3 +28,4 @@ prefix_expansions:
   PMID: 'https://www.ncbi.nlm.nih.gov/pubmed/'
 links:
   sb_status_levels: "https://schemablocks.org/about/sb-status-levels.html"
+podmd: 'tools/podMD/podmd.pl'

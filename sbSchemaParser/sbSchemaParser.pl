@@ -72,13 +72,13 @@ this-organization
   |           |
   |           |-- examples
   |   
-  |-- this-organization.github.io   # web repository (Jekyll based)
+  |-- (webdocs.repo)   						# web repository (Jekyll based)
         |
-        |-- (out_web.dirs.jekyll)
+        |-- (webdocs.jekylldir)
         |     |-- Schema.md
         |     |-- ...
         |
-        |-- (out_web.dirs.schemas)
+        |-- (webdocs.schemadir)
               |-- current
               |     |-- Schema.json
               |     |-- ...
@@ -90,10 +90,28 @@ this-organization
               |-- v...
 ```
 
+#### Usage
+
+The `sbSchemaParser.pl` script has to be run in a _local_ version of the 
+repository structure. In principle, any relative directory locations should be 
+possible if specified in the `config.yaml` defaults file, though a reasonable 
+approach is to use a "organization -> projects" structure as above.
+
+The script is executed with
+
+```
+perl sbSchemaParser.pl
+```
+
+The only current option is to provide a "-filter" argument against the schema 
+file names; e.g. `perl sbSchemaParser.pl -filter Age` will only process schemas 
+with "Age" in their file name.
+
 =cut
 
 $config->{here_path}		=		$here_path;
 $config->{git_root_dir}	=		realpath($here_path.'/../..');
+my $podmd				=		catfile($config->{git_root_dir}, $config->{podmd});
 
 # command line input
 my %args        =   @ARGV;
@@ -102,6 +120,11 @@ foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
 _process_src($config);
 
+# invoking the self-documentation of this script
+
+if (-f $podmd) {
+	`perl $podmd` }
+	
 exit;
 
 ################################################################################
@@ -110,39 +133,38 @@ exit;
 ################################################################################
 ################################################################################
 
-################################################################################
-################################################################################
-
 sub _process_src {
+
+=podmd
+#### Processing Schema Source Directories
+
+
+=cut
 
 	my $config		=		shift;
 
-	foreach my $src (@{ $config->{paths}->{'src'} }) {
-		my $src_dir = 	catdir(
-											$config->{git_root_dir},
-											$src->{repository},
-											$src->{dir}
-										);
-		opendir DIR, $src_dir;
-		foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
-			foreach my $out_web (@{ $config->{paths}->{'out_web'} }) {
+	foreach my $src_repo (keys %{ $config->{schema_repos} }) {
+		foreach my $src_dir (@{ $config->{schema_repos}->{$src_repo} }) {
+			my $src_path 	= 	catdir(
+													$config->{git_root_dir},
+													$src_repo,
+													$src_dir
+												);
+			opendir DIR, $src_path;
+			foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
 			
 				my $paths	=	{
 					schema_file		=>	$schema,
-					schema_path		=>	catfile($src_dir, $schema),
-					schema_dir		=>	$src->{dir},
-					schema_repo		=>	$src->{repository},
-					web_repo			=>	$out_web->{repository},
-					web_jekylldir	=>	$out_web->{dirs}->{jekyll},
-					web_schemadir	=>	$out_web->{dirs}->{schemas},
-					link_schema		=>	$out_web->{web}->{schemas_rel},
-					link_html			=>	$out_web->{web}->{html_rel},
+					schema_path		=>	catfile($src_path, $schema),
+					schema_dir		=>	$src_dir,
+					schema_repo		=>	$src_repo,
 				};
-			
+		
 				_process_yaml($config, $paths);
+
 			}
+			close DIR;
 		}
-		close DIR;
 	}
 
 }
@@ -195,7 +217,7 @@ markdown document.
 
 	my $output		=		{
 		md					=>	q{},
-		jekyll_head	=>	_create_jekyll_header($config, $paths),
+		jekyll_head	=>	_create_jekyll_header($config, $paths, $data),
 	};
 
   $output->{md} .=  <<END;
@@ -268,7 +290,6 @@ END
 
 ################################################################################
 ################################################################################
-# helpers
 ################################################################################
 ################################################################################
 
@@ -306,7 +327,7 @@ auto-generated and normal pages can be separated.
 		path				=>	catdir(
 											$config->{git_root_dir},
 											$paths->{schema_repo},
-											$config->{paths}->{out_dirnames}->{examples},
+											$config->{out_dirnames}->{examples},
 											$sbClass.'-examples.json'
 										),
 		content			=>	JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} ),
@@ -315,7 +336,7 @@ auto-generated and normal pages can be separated.
 		path				=>	catdir(
 											$config->{git_root_dir},
 											$paths->{schema_repo},
-											$config->{paths}->{out_dirnames}->{markdown},
+											$config->{out_dirnames}->{markdown},
 											$sbClass.'.md'
 										),
 		content			=>	q{}
@@ -324,7 +345,7 @@ auto-generated and normal pages can be separated.
 		path				=>	catdir(
 											$config->{git_root_dir},
 											$paths->{schema_repo},
-											$config->{paths}->{out_dirnames}->{json},
+											$config->{out_dirnames}->{json},
 											'current',
 											$sbClass.'.json'
 										),
@@ -334,7 +355,7 @@ auto-generated and normal pages can be separated.
 		path				=>	catdir(
 											$config->{git_root_dir},
 											$paths->{schema_repo},
-											$config->{paths}->{out_dirnames}->{json},
+											$config->{out_dirnames}->{json},
 											$sbVersion,
 											$sbClass.'.json'
 										),
@@ -343,8 +364,8 @@ auto-generated and normal pages can be separated.
 	$paths->{outfile_web_src_json_current} 	= 	{
 		path				=>	catdir(
 											$config->{git_root_dir},
-											$paths->{web_repo},
-											$paths->{web_schemadir},
+											$config->{webdocs}->{repo},
+											$config->{webdocs}->{schemadir},
 											'current',
 											$sbClass.'.json'
 										),
@@ -353,8 +374,8 @@ auto-generated and normal pages can be separated.
 	$paths->{outfile_web_src_json_versioned} 	= 	{
 		path				=>	catdir(
 											$config->{git_root_dir},
-											$paths->{web_repo},
-											$paths->{web_schemadir},
+											$config->{webdocs}->{repo},
+											$config->{webdocs}->{schemadir},
 											$sbVersion,
 											$sbClass.'.json'
 										),
@@ -363,14 +384,15 @@ auto-generated and normal pages can be separated.
 	$paths->{outfile_jekyll_current_md} 	= 	{
 		path				=>	catdir(
 											$config->{git_root_dir},
-											$paths->{web_repo},
-											$paths->{web_jekylldir},
+											$config->{webdocs}->{repo},
+											$config->{webdocs}->{jekylldir},
 											$config->{generator_prefix}.$sbClass.'.md'
 										),
 		content			=>	q{}
 	};
 	$paths->{github_link} 		= 	join('/',
-		$config->{paths}->{github_web},
+		'https://github.com',
+		$config->{github_organisation},
 		$paths->{schema_repo},
 		'blob',
 		'master',
@@ -378,12 +400,12 @@ auto-generated and normal pages can be separated.
 		$paths->{schema_file}
 	);
 	$paths->{web_link_json} 	= 	join('/',
-		$paths->{link_schema},
+		$config->{webdocs}->{web_schemas_rel},
 		'current',
 		$sbClass.'.json'
 	);
 	$paths->{doc_link_html} 	= 	join('/',
-		$paths->{link_html},
+		$config->{webdocs}->{web_html_rel},
 		$sbClass.'.html'
 	);
 	
@@ -478,17 +500,40 @@ END
 ################################################################################
 ################################################################################
 
-sub _expand_CURIEs {
+sub _create_jekyll_header {
+
+=podmd
+
+#### Jekyll File Header
+
+A version of the Markdown inline documentation is added to the Github (or 
+alternative), Jekyll based website source tree.
+
+The page will only be generated into an HTML page if it contains a specific 
+header written in YAML.
+
+The `_create_jekyll_header` function will pre-pend such a header to the Markdown 
+page, including some file specific parameters such as the `permalink` address of 
+the page.
+
+=cut
 
 	my $config		=		shift;
-	my $curie			=		shift;
+	my $paths			=		shift;
+	my $data			=		shift;
+	return 	<<END;
+---
+title: $paths->{class}
+layout: default
+permalink: "$paths->{doc_link_html}"
+excerpt_separator: $config->{jekyll_excerpt_separator}
+category:
+  - schemas
+tags:
+  - code
+---
 
-	if (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} }) {
-		my $pre			=		(grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
-		$curie			=~	s/$pre\:/$config->{prefix_expansions}->{$pre}/;
-	}
-
-	return $curie;
+END
 
 }
 
@@ -523,24 +568,34 @@ sub _format_property_type_html {
 
 ################################################################################
 ################################################################################
+=podmd
 
-sub _create_jekyll_header {
+### Helper Subroutines
+
+=cut
+################################################################################
+################################################################################
+
+sub _expand_CURIEs {
+
+=podmd
+#### `_expand_CURIEs`
+
+This function expands prefixes in identifiers, based on the parameters provided 
+in `config.yml`. This is thought as a helper for some script/website specific 
+linking, not as a general CURIE expansion utility.
+
+=cut
 
 	my $config		=		shift;
-	my $files			=		shift;
-	return 	<<END;
----
-title: $files->{class}
-layout: default
-permalink: "$paths->{doc_link_html}"
-excerpt_separator: $config->{jekyll_excerpt_separator}
-category:
-  - schemas
-tags:
-  - code
----
+	my $curie			=		shift;
 
-END
+	if (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} }) {
+		my $pre			=		(grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
+		$curie			=~	s/$pre\:/$config->{prefix_expansions}->{$pre}/;
+	}
+
+	return $curie;
 
 }
 
@@ -563,6 +618,7 @@ sub _export_outfile {
 
 ################################################################################
 ################################################################################
+
 
 sub _pluralize {
 	my $word			=		shift;
