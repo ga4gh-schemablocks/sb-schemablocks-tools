@@ -478,19 +478,20 @@ descriptions and examples.
 
   foreach my $property ( sort keys %{ $data->{properties} } ) {
     my $label   =   _format_property_type_html($data->{properties}->{$property});
+    my $description	=		_format_property_description($data->{properties}->{$property});
     $md         .=  <<END;
 
 #### $property
 
 * type: $label
 
-$data->{properties}->{$property}->{'description'}
+$description
 
 END
-
-    $md         .=  "##### `$property` Value "._pluralize("Example", $data->{properties}->{$property}->{'examples'})."  \n\n";
-    foreach (@{ $data->{properties}->{$property}->{'examples'} }) {
-      $md       .=  "```\n".JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($_)."```\n";
+		my $propEx	=		_format_property_examples($data->{properties}->{$property});
+    $md         .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
+    foreach (@$propEx) {
+      $md       .=  "```\n".$_."```\n";
     }
 
   }
@@ -586,6 +587,47 @@ the attributes). We'll hope for a more elegant solution ...
     $typeLab    =   "array of ".$typeLab }
 
     return $typeLab;
+
+}
+
+################################################################################
+################################################################################
+
+sub _format_property_description {
+
+=podmd
+
+=cut
+
+  my $prop_data =   shift;
+	if (ref($prop_data) =~ /HASH/) {
+		if ($prop_data->{allof}) {
+			$prop_data	=		$prop_data->{allof} } }
+
+  return $prop_data->{description};
+
+}
+
+################################################################################
+################################################################################
+
+sub _format_property_examples {
+
+=podmd
+
+=cut
+
+  my $prop_data =   shift;
+  my $ex_md			=		[];	
+	if (ref($prop_data) =~ /HASH/) {
+		if ($prop_data->{allof}) {
+			$prop_data	=		$prop_data->{allof} } }
+ 
+	foreach (@{ $prop_data->{'examples'} }) {
+		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($_));
+	}
+
+  return $ex_md;
 
 }
 
