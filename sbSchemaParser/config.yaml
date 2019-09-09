@@ -10,7 +10,7 @@ schema_repos:
     - schemas
   sb-phenopackets:
     - schemas
-    - working
+#    - working
 out_dirnames:
   json: generated/json
   markdown: generated/doc

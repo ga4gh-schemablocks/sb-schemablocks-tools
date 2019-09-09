@@ -545,8 +545,29 @@ END
 sub _format_property_type_html {
 
   my $prop_data =   shift;
+  
+=podmd
+##### Hacking the "$ref is a solitary attribute" problem
+
+In the current JSON Schema specification there is a problem with "$ref"-type 
+attribute types: If a reference is given, additional attributes of the property 
+(examples, description) are being ignored. This isn't very helpful, since 
+information specific to the property's _instantiation_ will not be displayed.
+
+This behaviour can be alleviated by wrapping the `$ref` and other attributes 
+with an `allof` statement (which is interpolated in the following, to expose 
+the attributes). We'll hope for a more elegant solution ...
+
+=cut
+
+	if (ref($prop_data) =~ /HASH/) {
+		if ($prop_data->{allof}) {
+			$prop_data	=		$prop_data->{allof} } }
+ 
   my $typeLab;
-  my $type      =   $prop_data->{type};
+  my $type      =   q{};
+  if ($prop_data->{type}) {
+  	$type				=		$prop_data->{type} }
   if ($type !~ /.../ && $prop_data->{'$ref'} =~ /.../) {
     $typeLab    =   $prop_data->{'$ref'} }
   elsif ($type =~ /array/ && $prop_data->{items}->{'$ref'} =~ /.../) {
