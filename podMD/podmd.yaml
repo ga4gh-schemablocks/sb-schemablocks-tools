@@ -1,6 +1,7 @@
 output_dir: '../../ga4gh-schemablocks.github.io/pages/_doc'
 output_pre: '+generated-doc'
 category: howto
+tab_to_spaces: 2
 tags:
   - code
   - documentation

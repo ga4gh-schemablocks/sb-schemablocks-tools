@@ -42,6 +42,7 @@ my $config      =   {
       language    =>  'Perl',
     },
   },
+  tab_to_spaces	=>	2,
 };
 
 if (-f $conf_yaml) {
@@ -57,6 +58,7 @@ foreach my $scope (keys %{ $config->{packages} }) {
 
   my $package   =   $config->{packages}->{$scope};
   my $in_dir    =   $package->{input};
+  my $t2s				=		$package->{tab_to_spaces} =~ /^\d$/ ? $package->{tab_to_spaces} : $config->{tab_to_spaces};
   if ($in_dir =~ /^\.\.?\//) {
     $in_dir     =   $here_path.'/'.$in_dir }
   print Dumper('DIR: '.$in_dir);
@@ -89,7 +91,7 @@ markers, but is wrapped in source quote tags.
 
 If per-line commenting is uses between the markers (Python "# " line starts),
 these comment tags a re removed. However, this will also remove Markdown H1
-tags - so either use HTML for those or pre-pend them with a space.
+tags - so either use HTML for those or pre-pend them with a space. 
 
 =cut
 
@@ -97,6 +99,7 @@ tags - so either use HTML for those or pre-pend them with a space.
       if (grep{ $line =~ /$_/ } @{ $config->{md_stops} },  @{ $package->{md_stops} }) { $flag = -1 }
       if ($flag == 1) {
         $line   =~  s/^\# //;
+        $line		=~	s/\t/' ' x $t2s/eg;
         push(@md, $line);
       }
       if (grep{ $line =~ /$_/ } @{ $config->{md_starts} },  @{ $package->{md_starts} }) { $flag = 1 }
