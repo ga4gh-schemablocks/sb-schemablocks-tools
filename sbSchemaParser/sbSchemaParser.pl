@@ -1,23 +1,24 @@
 #!/usr/bin/perl
 
 use Cwd qw(abs_path realpath);
-use File::Spec::Functions qw(catdir catfile);
+use File::Spec::Functions qw(catdir catfile splitdir);
 use JSON::XS;
 use YAML::XS qw(LoadFile DumpFile);
 use Data::Dumper;
 $Data::Dumper::Sortkeys =   1;
 
 binmode STDOUT, ":utf8";
-my @here_path   =   split('/', abs_path($0));
+my @here_path   =   splitdir(abs_path($0));
 pop @here_path;
 my $here_path   =   catdir(@here_path);
-my $config      =   LoadFile($here_path.'/config.yaml') or die "¡No config.yaml file in this path!";
+my $config      =   LoadFile(catfile($here_path, 'config.yaml')) or die "¡No config.yaml file in this path!";
 bless $config;
 
 =podmd
-The `sbSchemaParser.pl` Perl script parses YAML schema definition scripts 
-written in JSON Schema and using GA4GH SchemaBlocks {S}[B] attributes and 
-structure, into 
+
+The `sbSchemaParser.pl` Perl script parses YAML schema definitions 
+written in [_JSON Schema_](https://json-schema.org) which use the standard GA4GH 
+[SchemaBlocks {S}[B]](http://schemablocks.org) structure, into 
 
 * JSON versions of the schemas (unprocessed), to serve as the reference
 schema versions
@@ -138,6 +139,10 @@ sub _process_src {
 =podmd
 #### Processing Schema Source Directories
 
+The script parses through the associated source repositories which are required to reside 
+inside a unified root (`git_root_dir`). The names of the (one or several) repositories and 
+their schema file source directories (one or several per repository) are specified in the 
+`config.yaml` file.
 
 =cut
 
@@ -164,11 +169,8 @@ sub _process_src {
 
       }
       close DIR;
-    }
-  }
 
-}
-
+}}}
 
 ################################################################################
 # main file specific process
@@ -193,10 +195,13 @@ path structure with the class name post-pended with a version:
 ```
 Processing is skipped if the class name does not consist of word character, or
 if a filter had been provided and the class name doesn't match.
+Processing is skipped if the class name does contain other than word / dot / 
+dash characters, or if a filter had been provided and the class name 
+does not match.
 
 =cut
 
-  if ($data->{title} !~ /^\w+?$/) { return }
+  if ($data->{title} !~ /^\w[\w\.\-]+?$/) { return }
   if ($args{-filter} =~ /.../) {
     if ($data->{title} !~ /$args{-filter}/) {
       return } }
@@ -207,12 +212,18 @@ if a filter had been provided and the class name doesn't match.
   }
   
   if ($data->{meta}->{sb_status} !~ /\w/) {
-    return }
+  	print "¡¡¡ No sb_status value in $data->{title} => skipping !!!\n";
+    return;
+  }
 
 =podmd
+
 The documentation is extracted from the YAML schema file and formatted into
-markdown content, both for a plain `.md` file in the output directories of 
-the original repository (`out_dirnames.markdown`) and for the file for the Jekyll webpage generator.
+markdown content, producing 
+
+* a plain `.md` file in the output directories of the original repository 
+(`out_dirnames.markdown`)
+* the YAML header prepended file for the webpage generation
 
 =cut
 
@@ -237,8 +248,9 @@ END
       foreach (@{$data->{meta}->{$attr}}) {
         my $text    =   $_->{description};
 =podmd
-The script performs a CURIE to URL expansion for prefixes defined in the
-configuration file and links e.g. the ORCID id to its web address.
+
+A rudimentary CURIE to URL expansion is performed for prefixes defined in the
+configuration file. An example would be the linking of an ORCID id to its web address.
 
 =cut
         my $id  =   _expand_CURIEs($config, $_->{id});
@@ -300,13 +312,28 @@ END
 sub _create_file_paths {
 
 =podmd
-Paths for the output files are created based on the values (e.g. out_dirnames` 
+
+Paths for output files are created based on the values (e.g. `out_dirnames` 
 provided in the configuration file.
 
 The web files for the Jekyll / GH-pages processing receive a prefix, to ensure 
 that auto-generated and normal pages can co-exist. The `permalink` parameter 
 provided in the YAML header of the Jekyll file provides a "nice" and stable 
 name for the generated HTML page (independent of the original file name).
+
+#### Deparsing of the class "$id"
+
+The class "$id" values are assumed to have a specific structure, where 
+
+* the last component is a version id
+* the second-to-last component is the class name
+* elements before the class name are ignored in parsing
+
+##### Example
+
+```
+"$id": https://schemablocks.org/schemas/ga4gh/BeaconVariant/v0.0.1
+```
 
 =cut
 
@@ -571,8 +598,12 @@ the attributes). We'll hope for a more elegant solution ...
   	$type				=		$prop_data->{type} }
   if ($type !~ /.../ && $prop_data->{'$ref'} =~ /.../) {
     $typeLab    =   $prop_data->{'$ref'} }
-  elsif ($type =~ /array/ && $prop_data->{items}->{'$ref'} =~ /.../) {
-    $typeLab    =   $prop_data->{items}->{'$ref'} }
+  elsif ($type =~ /array/) {
+  	if ($prop_data->{items}->{'$ref'} =~ /.../) {
+    	$typeLab  =   $prop_data->{items}->{'$ref'} }
+    else {
+    	$typeLab  =   $prop_data->{items}->{type} }
+  }
   else {
     $typeLab    =   $type }
 
