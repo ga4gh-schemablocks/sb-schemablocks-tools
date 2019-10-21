@@ -554,11 +554,13 @@ the page.
 title: $paths->{class}
 layout: default
 permalink: "$paths->{doc_link_html}"
+sb_status: "$data->{meta}->{sb_status}"
 excerpt_separator: $config->{jekyll_excerpt_separator}
 category:
   - schemas
 tags:
   - code
+  - $data->{meta}->{sb_status}
 ---
 
 END
@@ -712,7 +714,6 @@ sub _export_outfile {
 
 ################################################################################
 ################################################################################
-
 
 sub _pluralize {
   my $word      =   shift;
