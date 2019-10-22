@@ -241,6 +241,10 @@ END
   foreach my $attr (qw(provenance used_by contributors)) {
     if ($data->{meta}->{$attr}) {
       my $label =   $attr;
+      
+      if ($attr eq 'contributors') {
+        $output->{md} .=  "\n\n".$config->{jekyll_excerpt_separator}."\n" }
+      
       $label    =~  s/\_/ /g;
       $output->{md} .=  "\n* ".ucfirst($label)."  \n";
       foreach (@{$data->{meta}->{$attr}}) {
@@ -259,8 +263,6 @@ configuration file. An example would be the linking of an ORCID id to its web ad
         $output->{md}   .=  "\n    - ".$text."  ";
   }}}
   $output->{md} .=  <<END;
-
-$config->{jekyll_excerpt_separator}
 
 ### Source ($paths->{version})
 
@@ -588,10 +590,8 @@ the attributes). We'll hope for a more elegant solution ...
 
 =cut
 
-	if (ref($prop_data) =~ /HASH/) {
-		if ($prop_data->{allof}) {
-			$prop_data	=		$prop_data->{allof} } }
- 
+	$prop_data    =   _remap_allof($prop_data);
+		  
   my $typeLab;
   my $type      =   q{};
   if ($prop_data->{type}) {
@@ -621,6 +621,46 @@ the attributes). We'll hope for a more elegant solution ...
 
 }
 
+
+################################################################################
+################################################################################
+
+sub _remap_allof {
+
+=podmd
+##### Helper `_remap_allof`
+
+This function remaps the list of property attributes required from using a 
+'$ref' property definition to a standard object, which is then processed for
+documentation in the usual way.
+
+TODO: 
+* be aware of the possibility of multiple "$ref" elements (not in the {S}[B]
+specifications right now) which would being reduced to one
+* hoping for _JSON Schema_ to fix the "$ref" format requirement ...
+
+=cut
+
+  my $prop_data =   shift;
+  my $prop      =   {};
+
+	if (ref($prop_data) !~ /HASH/) { return $prop_data }
+	if (! $prop_data->{allof}) { return $prop_data }
+
+  foreach my $of (@{ $prop_data->{allof} }) {		  
+    if ((keys %$of )[0] eq '$ref') {
+      $prop->{'$ref'}  =   $of->{'$ref'} }
+    else {
+      foreach (sort keys %$of) {
+        $prop->{$_}    =   $of->{$_};
+      }
+    }	  
+  }
+ 
+  return $prop;
+  
+}
+ 
 ################################################################################
 ################################################################################
 
@@ -631,9 +671,7 @@ sub _format_property_description {
 =cut
 
   my $prop_data =   shift;
-	if (ref($prop_data) =~ /HASH/) {
-		if ($prop_data->{allof}) {
-			$prop_data	=		$prop_data->{allof} } }
+	$prop_data    =   _remap_allof($prop_data);
 
   return $prop_data->{description};
 
@@ -650,9 +688,7 @@ sub _format_property_examples {
 
   my $prop_data =   shift;
   my $ex_md			=		[];	
-	if (ref($prop_data) =~ /HASH/) {
-		if ($prop_data->{allof}) {
-			$prop_data	=		$prop_data->{allof} } }
+	$prop_data    =   _remap_allof($prop_data);
  
 	foreach (@{ $prop_data->{'examples'} }) {
 		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($_));
