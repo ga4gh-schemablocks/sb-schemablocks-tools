@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use Cwd qw(abs_path realpath);
+use File::Path qw(make_path);
 use File::Spec::Functions qw(catdir catfile splitdir);
 use JSON::XS;
 use YAML::XS qw(LoadFile DumpFile);
@@ -38,12 +39,18 @@ this-organization
   |-- tools
   |     |
   |     |-- sbSchemaParser
+  |     |     |
   |           |-- sbSchemaParser.pl # this file
   |           |-- config.yaml       # in- and output path definitions
   |
-  |-- blocks                        # example for (1 or 1+) schema repositories
+  |-- sb-external-schemas-name      # example for (1 or 1+) schema repositories
+  |     |
+  |     |-- source
+  |     |     |
+  |     |     |-- v1.0.1						# versioned representation of the donor code
   |     |
   |     |-- schemas
+  |     |     |
   |     |     |-- Schema.yaml
   |     |     |-- OtherSchema.yaml
   |     |     |-- ...
@@ -76,11 +83,12 @@ this-organization
   |-- (webdocs.repo)                # web repository (Jekyll based)
         |
         |-- (webdocs.jekylldir)
+        |     |
         |     |-- Schema.md
         |     |-- ...
         |
         |-- (webdocs.schemadir)
-              |-- current
+              |
               |     |-- Schema.json
               |     |-- ...
               |    
@@ -191,7 +199,7 @@ The class name is derived from the file's "$id" value, assuming a canonical
 path structure with the class name post-pended with a version:
 
 ```
-"$id": https://schemablocks.org/schemas/ga4gh/Phenopacket/v0.0.1
+"$id": https://schemablocks.org/schemas/sb-phenopackets/Phenopacket/v0.0.1
 ```
 Processing is skipped if the class name does contain other than word / dot / 
 dash characters, or if a filter had been provided and the class name 
@@ -232,7 +240,7 @@ markdown content, producing
 
   $output->{md} .=  <<END;
 
-## $data->{title}
+## $data->{title} ($paths->{project})
 
 * {S}[B] Status  [[i]]($config->{links}->{sb_status_levels})
     - __$data->{meta}->{sb_status}__
@@ -264,6 +272,7 @@ configuration file. An example would be the linking of an ORCID id to its web ad
   }}}
   $output->{md} .=  <<END;
 
+
 ### Source ($paths->{version})
 
 * raw source [[JSON](./current/$paths->{class}.json)]
@@ -292,16 +301,15 @@ END
 
 =cut
 
-  $paths->{outfile_plain_md}->{content}     =   $output->{md};
-  $paths->{outfile_jekyll_current_md}->{content}    =   $output->{jekyll_head}.$output->{md}."\n";
+  $paths->{outfile_plain_md}->{content}           =   $output->{md};
+  $paths->{outfile_jekyll_current_md}->{content}  =   $output->{jekyll_head}.$output->{md}."\n";
 
   foreach my $outFile (grep{ /outfile_\w+?_md/} keys %{ $paths }) {
-    _export_outfile($paths->{$outFile});
+   _export_outfile($paths->{$outFile});
   }
 
 }
 
-################################################################################
 ################################################################################
 ################################################################################
 ################################################################################
@@ -332,7 +340,7 @@ The class "$id" values are assumed to have a specific structure, where
 ##### Example
 
 ```
-"$id": https://schemablocks.org/schemas/ga4gh/BeaconVariant/v0.0.1
+"$id": https://schemablocks.org/schemas/sb-beacon/BeaconVariant/v1.0.1
 ```
 
 =cut
@@ -342,80 +350,82 @@ The class "$id" values are assumed to have a specific structure, where
   my $data      =   shift;
 
   my @id_comps  =   split('/', $data->{'$id'}); 
-  my $sbVersion =   pop @id_comps;
-  my $sbClass   =   pop @id_comps;
+  $paths->{version} =   pop @id_comps;
+  $paths->{class}   =   pop @id_comps;
+  $paths->{project} =   pop @id_comps;
 
   my $fileClass =   $paths->{schema_file};
   $fileClass    =~  s/\.\w+?$//;
 
-  _check_class_name($sbClass, $fileClass);
+  _check_class_name($paths->{class}, $fileClass);
   
-  $paths->{class}   =   $sbClass;
-  $paths->{version} =   $sbVersion;
   $paths->{outfile_exmpls_json}   =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
-                      $paths->{schema_repo},
+                      $paths->{schema_repo},                      
                       $config->{out_dirnames}->{examples},
-                      $sbClass.'-examples.json'
+                      $paths->{class}.'-examples.json'
                     ),
     content     =>  JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} ),
   };
   $paths->{outfile_plain_md}  =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $paths->{schema_repo},
                       $config->{out_dirnames}->{markdown},
-                      $sbClass.'.md'
+                      $paths->{class}.'.md'
                     ),
     content     =>  q{}
   };
   $paths->{outfile_src_json_current}  =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $paths->{schema_repo},
                       $config->{out_dirnames}->{json},
                       'current',
-                      $sbClass.'.json'
+                      $paths->{class}.'.json'
                     ),
     content     =>  JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
   };
   $paths->{outfile_src_json_versioned}  =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $paths->{schema_repo},
                       $config->{out_dirnames}->{json},
-                      $sbVersion,
-                      $sbClass.'.json'
+                      $paths->{version},
+                      $paths->{class}.'.json'
                     ),
     content     =>  JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
   };
   $paths->{outfile_web_src_json_current}  =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $config->{webdocs}->{repo},
                       $config->{webdocs}->{schemadir},
+                      $paths->{project},
                       'current',
-                      $sbClass.'.json'
+                      $paths->{class}.'.json'
                     ),
     content     =>  JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
   };
   $paths->{outfile_web_src_json_versioned}  =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $config->{webdocs}->{repo},
                       $config->{webdocs}->{schemadir},
-                      $sbVersion,
-                      $sbClass.'.json'
+                      $paths->{project},
+                      $paths->{version},
+                      $paths->{class}.'.json'
                     ),
     content     =>  JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
   };
   $paths->{outfile_jekyll_current_md}   =   {
-    path        =>  catdir(
+    path        =>  catfile(
                       $config->{git_root_dir},
                       $config->{webdocs}->{repo},
                       $config->{webdocs}->{jekylldir},
-                      $config->{generator_prefix}.$sbClass.'.md'
+                      $paths->{project},
+                      $config->{generator_prefix}.$paths->{class}.'.md'
                     ),
     content     =>  q{}
   };
@@ -430,14 +440,16 @@ The class "$id" values are assumed to have a specific structure, where
   );
   $paths->{web_link_json}   =   join('/',
     $config->{webdocs}->{web_schemas_rel},
+    $paths->{project},
     'current',
-    $sbClass.'.json'
+    $paths->{class}.'.json'
   );
   $paths->{doc_link_html}   =   join('/',
     $config->{webdocs}->{web_html_rel},
-    $sbClass.'.html'
+    $paths->{project},
+    $paths->{class}.'.html'
   );
-  
+
   return $paths;
 
 }
@@ -563,6 +575,7 @@ category:
 tags:
   - code
   - $data->{meta}->{sb_status}
+  - $paths->{project}
 ---
 
 END
@@ -739,9 +752,10 @@ sub _export_outfile {
   my $fileObj   =   shift;
 
   print "writing $fileObj->{path}\n";
-  my $dir     =   $fileObj->{path};
-  $dir        =~  s/\/[^\/]+?\.\w+?$//;
-  mkdir $dir;
+  my $dir     	=   $fileObj->{path};
+  $dir        	=~  s/\/[^\/]+?\.\w+?$//;
+  if (! -d $dir) {
+  	make_path($dir) }
   open  (FILE, ">", $fileObj->{path}) || warn '!!! output file '. $fileObj->{path}.' could not be created !!!';
   print FILE  $fileObj->{content}."\n";
   close FILE;

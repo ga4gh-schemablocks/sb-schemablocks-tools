@@ -17,10 +17,10 @@ out_dirnames:
   examples: generated/examples
 webdocs:
   repo: 'ga4gh-schemablocks.github.io'
-  jekylldir: 'pages/_schemas/ga4gh'
-  schemadir: 'schemas/ga4gh'
-  web_schemas_rel: "/schemas/ga4gh"
-  web_html_rel: "/schemas/ga4gh"
+  jekylldir: 'pages/_schemas'
+  schemadir: 'schemas'
+  web_schemas_rel: "/schemas"
+  web_html_rel: "/schemas"
 generator_prefix: '+generated__'
 jekyll_excerpt_separator: "<!--more-->"
 prefix_expansions:
