@@ -5,11 +5,20 @@ url: 'https://schemablocks.org'
 tools_repo: tools
 schema_repos:
   blocks:
-    - schemas
+    schema_dirs:
+      - schemas
   playground:
-    - schemas
+    schema_dirs:
+      - schemas
   sb-phenopackets:
-    - schemas
+    schema_dirs:
+      - schemas
+  sb-checksum:
+    schema_dirs:
+      - schemas
+  sb-vr-spec:
+    schema_dirs:
+      - schemas
 #    - working
 out_dirnames:
   json: generated/json
@@ -22,6 +31,11 @@ webdocs:
   web_schemas_rel: "/schemas"
   web_html_rel: "/schemas"
 generator_prefix: '+generated__'
+schema_disclaimer: |
+  <div id="schema-footer">
+  This schema representation is for information purposes. The authorative 
+  version remains with the developing project (see "provenance").
+  </div>
 jekyll_excerpt_separator: "<!--more-->"
 prefix_expansions:
   orcid: 'https://orcid.org/'

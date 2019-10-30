@@ -157,7 +157,7 @@ their schema file source directories (one or several per repository) are specifi
   my $config    =   shift;
 
   foreach my $src_repo (keys %{ $config->{schema_repos} }) {
-    foreach my $src_dir (@{ $config->{schema_repos}->{$src_repo} }) {
+    foreach my $src_dir (@{ $config->{schema_repos}->{$src_repo}->{schema_dirs} }) {
       my $src_path  =   catdir(
                           $config->{git_root_dir},
                           $src_repo,
@@ -269,7 +269,8 @@ END
 =podmd
 
 A rudimentary CURIE to URL expansion is performed for prefixes defined in the
-configuration file. An example would be the linking of an ORCID id to its web address.
+configuration file. An example would be the linking of an ORCID id to its web 
+address.
 
 =cut
         my $id  =   _expand_CURIEs($config, $_->{id});
@@ -317,6 +318,10 @@ END
   }
 
   ##############################################################################
+  
+  
+  ##############################################################################
+
 
 =podmd
 
@@ -324,7 +329,7 @@ END
 =cut
 
   $paths->{outfile_plain_md}->{content}           =   $output->{md};
-  $paths->{outfile_jekyll_current_md}->{content}  =   $output->{jekyll_head}.$output->{md}."\n";
+  $paths->{outfile_jekyll_current_md}->{content}  =   $output->{jekyll_head}.$output->{md}.$config->{schema_disclaimer}."\n";
 
   foreach my $outFile (grep{ /outfile_\w+?_md/} keys %{ $paths }) {
    _export_outfile($paths->{$outFile});
