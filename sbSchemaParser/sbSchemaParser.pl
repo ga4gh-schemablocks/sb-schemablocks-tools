@@ -240,10 +240,15 @@ markdown content, producing
 
   $output->{md} .=  <<END;
 
-## $data->{title} ($paths->{project})
+<div id="schema-header-title">
+  <h2>$data->{title} <span id="schema-header-title-project">$paths->{project} <a href="$paths->{github_repo_link}" target="_BLANK">&nearr;</a></span> </h2>
+</div>
 
-* {S}[B] Status  [[i]]($config->{links}->{sb_status_levels})
-    - __$data->{meta}->{sb_status}__
+<table id="schema-header-table">
+  <tr>
+    <th>{S}[B] Status <a href="$config->{links}->{sb_status_levels}">[i]</a></th>
+    <td><div id="schema-header-status">$data->{meta}->{sb_status}</div></td>
+  </tr>
 END
 
   foreach my $attr (qw(provenance used_by contributors)) {
@@ -254,7 +259,11 @@ END
         $output->{md} .=  "\n\n".$config->{jekyll_excerpt_separator}."\n" }
       
       $label    =~  s/\_/ /g;
-      $output->{md} .=  "\n* ".ucfirst($label)."  \n";
+      $output->{md} .=  '
+  <tr>
+    <th>'.ucfirst($label).'</th>
+    <td>
+      <ul>';
       foreach (@{$data->{meta}->{$attr}}) {
         my $text    =   $_->{description};
 =podmd
@@ -265,20 +274,33 @@ configuration file. An example would be the linking of an ORCID id to its web ad
 =cut
         my $id  =   _expand_CURIEs($config, $_->{id});
         if ($id =~ /\:\/\/\w/) {
-          $text =   '['.$text.']('.$id.')' }
+          $text =   '<a href="'.$id.'">'.$text.'</a>' }
         elsif ($id =~ /\w/) {
           $text .=  ' ('.$id.')' }
-        $output->{md}   .=  "\n    - ".$text."  ";
-  }}}
+        $output->{md}   .=  "\n<li>".$text."</li>";
+      }
+      $output->{md} .=  "
+      </ul>
+    </td>
+  </tr>";
+  }}
   $output->{md} .=  <<END;
 
+  <tr>
+    <th>Source ($paths->{version})</th>
+    <td>
+      <ul>
+        <li><a href="current/$paths->{class}.json" target="_BLANK">raw source [JSON]</a></li>
+        <li><a href="$paths->{github_file_link}" target="_BLANK">Github</a></li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
-### Source ($paths->{version})
+<div id="schema-attributes-title">
+  <h3>Attributes</h3>
+</div>
 
-* raw source [[JSON](./current/$paths->{class}.json)]
-* [Github]($paths->{github_link})
-
-### Attributes
 END
 
   foreach my $attr (grep{ $data->{$_} =~ /\w/ }  qw(type format pattern description)) {
@@ -429,7 +451,12 @@ The class "$id" values are assumed to have a specific structure, where
                     ),
     content     =>  q{}
   };
-  $paths->{github_link}     =   join('/',
+  $paths->{github_repo_link} =   join('/',
+    'https://github.com',
+    $config->{github_organisation},
+    $paths->{schema_repo},
+  );
+  $paths->{github_file_link} =   join('/',
     'https://github.com',
     $config->{github_organisation},
     $paths->{schema_repo},
@@ -490,7 +517,7 @@ sub _parse_properties {
 
 ### Properties
 
-<table>
+<table id="schema-property-table">
   <tr>
     <th>Property</th>
     <th>Type</th>
@@ -501,7 +528,7 @@ END
     my $label   =   _format_property_type_html($data->{properties}->{$property});
     $md         .=  <<END;
   <tr>
-    <td>$property</td>
+    <th>$property</th>
     <td>$label</td>
   </tr>
 END
