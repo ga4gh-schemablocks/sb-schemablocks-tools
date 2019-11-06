@@ -10,6 +10,9 @@ schema_repos:
   playground:
     schema_dirs:
       - schemas
+  template:
+    schema_dirs:
+      - schemas
   sb-phenopackets:
     schema_dirs:
       - schemas
@@ -17,6 +20,9 @@ schema_repos:
     schema_dirs:
       - schemas
   sb-vr-spec:
+    schema_dirs:
+      - schemas
+  sb-beacon-api:
     schema_dirs:
       - schemas
 #    - working
