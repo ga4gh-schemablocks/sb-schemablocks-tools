@@ -190,6 +190,12 @@ sub _process_yaml {
   my $paths     =   shift;
 
   bless $paths;
+  if ($config->{args}->{-filter} =~ /.../) {
+
+
+    if ($paths->{schema_file} !~ /$config->{args}->{-filter}/) {
+      return } }
+
   print "Reading YAML file \"$paths->{schema_path}\"\n";
 
   my $data      =   LoadFile($paths->{schema_path});
@@ -208,9 +214,6 @@ does not match.
 =cut
 
   if ($data->{title} !~ /^\w[\w\.\-]+?$/) { return }
-  if ($args{-filter} =~ /.../) {
-    if ($data->{title} !~ /$args{-filter}/) {
-      return } }
   
   $paths->_create_file_paths($config, $data);
   foreach my $outFile (grep{ /outfile_\w*?json/} keys %{ $paths }) {
@@ -380,6 +383,11 @@ The class "$id" values are assumed to have a specific structure, where
   $paths->{version} =   pop @id_comps;
   $paths->{class}   =   pop @id_comps;
   $paths->{project} =   pop @id_comps;
+  
+  if (! $data->{examples}) { $data->{examples} = [] }
+
+# print Dumper(@id_comps, $paths->{project}, $paths->{class}, $paths->{version});
+# print Dumper($data->{examples});
 
   my $fileClass =   $paths->{schema_file};
   $fileClass    =~  s/\.\w+?$//;
@@ -519,7 +527,6 @@ sub _parse_properties {
 
   $md           .=  <<END;
 
-
 ### Properties
 
 <table id="schema-properties-table">
@@ -646,6 +653,8 @@ the attributes). We'll hope for a more elegant solution ...
   elsif ($type =~ /array/) {
   	if ($prop_data->{items}->{'$ref'} =~ /.../) {
     	$typeLab  =   $prop_data->{items}->{'$ref'} }
+  	elsif ($prop_data->{items} =~ /.../) {
+    	$typeLab  =   $prop_data->{items} }
     else {
     	$typeLab  =   $prop_data->{items}->{type} }
   }
