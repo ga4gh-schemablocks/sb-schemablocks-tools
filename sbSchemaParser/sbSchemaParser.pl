@@ -6,7 +6,9 @@ use File::Spec::Functions qw(catdir catfile splitdir);
 use JSON::XS;
 use YAML::XS qw(LoadFile DumpFile);
 use Data::Dumper;
+
 $Data::Dumper::Sortkeys =   1;
+$YAML::XS::QuoteNumericStrings	=		0;
 
 binmode STDOUT, ":utf8";
 my @here_path   =   splitdir(abs_path($0));
@@ -307,7 +309,7 @@ address.
 
 END
 
-  foreach my $attr (grep{ $data->{$_} =~ /\w/ }  qw(type format pattern description)) {
+  foreach my $attr (grep{ $data->{$_} =~ /\w/ }  qw(type format minimum pattern description)) {
     $output->{md}   .=  "  \n__".ucfirst($attr).":__ $data->{$attr}" }
 
   if ($data->{type} =~ /object/i) {
@@ -648,8 +650,11 @@ the attributes). We'll hope for a more elegant solution ...
   my $type      =   q{};
   if ($prop_data->{type}) {
   	$type				=		$prop_data->{type} }
-  if ($type !~ /.../ && $prop_data->{'$ref'} =~ /.../) {
-    $typeLab    =   $prop_data->{'$ref'} }
+  if (
+  	$type !~ /.../
+  	&&
+  	$prop_data->{'$ref'} =~ /.../
+  ) { $typeLab  =   $prop_data->{'$ref'} }
   elsif ($type =~ /array/) {
   	if ($prop_data->{items}->{'$ref'} =~ /.../) {
     	$typeLab  =   $prop_data->{items}->{'$ref'} }
@@ -659,7 +664,10 @@ the attributes). We'll hope for a more elegant solution ...
     	$typeLab  =   $prop_data->{items}->{type} }
   }
   else {
-    $typeLab    =   $type }
+    $typeLab    =   $type;
+    if ($prop_data->{"format"} =~ /.../) {
+    	$typeLab	.=	' ('.$prop_data->{"format"}.')' }
+  }
 
   if ($typeLab =~ /\/[\w\-]+?\.\w+?$/) {
     my $yaml    =   $typeLab;
