@@ -3,6 +3,12 @@ github_organisation: ga4gh-schemablocks
 site_domain_name: schemablocks.org
 url: 'https://schemablocks.org'
 tools_repo: tools
+tags:
+  - code
+  - specification
+categories:
+  - schemas
+  - howto
 schema_repos:
   blocks:
     schema_dirs:

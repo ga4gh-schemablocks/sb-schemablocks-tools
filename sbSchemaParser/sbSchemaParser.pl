@@ -323,8 +323,6 @@ END
   }
 
   ##############################################################################
-  
-  
   ##############################################################################
 
 
@@ -752,8 +750,9 @@ sub _format_property_examples {
   my $ex_md			=		[];	
 	$prop_data    =   _remap_allof($prop_data);
  
-	foreach (@{ $prop_data->{'examples'} }) {
-		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($_));
+	foreach my $example (@{ $prop_data->{'examples'} }) {
+		if (grep { $prop_data->{type} =~ /$_/ } qw(num int) ) { $example *= 1 }
+		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($example));
 	}
 
   return $ex_md;
