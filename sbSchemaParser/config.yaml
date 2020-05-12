@@ -31,6 +31,12 @@ schema_repos:
   sb-beacon-api:
     schema_dirs:
       - schemas
+  sb-duo:
+    schema_dirs:
+      - schemas
+  sb-discovery-search:
+    schema_dirs:
+      - schemas
 #    - working
 out_dirnames:
   json: generated/json

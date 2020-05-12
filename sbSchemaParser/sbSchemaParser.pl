@@ -149,10 +149,10 @@ sub _process_src {
 =podmd
 #### Processing Schema Source Directories
 
-The script parses through the associated source repositories which are required to reside 
-inside a unified root (`git_root_dir`). The names of the (one or several) repositories and 
-their schema file source directories (one or several per repository) are specified in the 
-`config.yaml` file.
+The script parses through the associated source repositories which are required
+to reside inside a unified root (`git_root_dir`). The names of the (one or
+several) repositories and their schema file source directories (one or several
+per repository) are specified in the `config.yaml` file.
 
 =cut
 
@@ -315,7 +315,7 @@ END
   if ($data->{type} =~ /object/i) {
     $output->{md}   =   _parse_properties($data, $output->{md}) }
 
-  if ($data->{'examples'}) {
+  if (@{ $data->{'examples'} } > 0) {
     $output->{md}   .=  "\n\n### `$data->{title}` Value "._pluralize("Example", $data->{'examples'})."  \n\n";
     foreach (@{ $data->{'examples'} }) {
       $output->{md} .=  "```\n".JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($_)."```\n";
@@ -566,10 +566,12 @@ descriptions and examples.
 $description
 
 END
-		my $propEx	=		_format_property_examples($data->{properties}->{$property});
-    $md         .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
-    foreach (@$propEx) {
-      $md       .=  "```\n".$_."```\n";
+	my $propEx	=		_format_property_examples($data->{properties}->{$property});
+		if (@$propEx > 0) {
+		$md         .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
+		foreach (@$propEx) {
+		  $md       .=  "```\n".$_."```\n";
+		}
     }
 
   }
@@ -656,7 +658,7 @@ the attributes). We'll hope for a more elegant solution ...
   elsif ($type =~ /array/) {
   	if ($prop_data->{items}->{'$ref'} =~ /.../) {
     	$typeLab  =   $prop_data->{items}->{'$ref'} }
-  	elsif ($prop_data->{items} =~ /.../) {
+  	elsif ( ref($prop_data->{items}) !~ /HASH/ ) {
     	$typeLab  =   $prop_data->{items} }
     else {
     	$typeLab  =   $prop_data->{items}->{type} }
@@ -675,7 +677,7 @@ the attributes). We'll hope for a more elegant solution ...
     $typeLab    .=  ' [<a href="'.$yaml.'" target="_BLANK">SRC</a>] [<a href="'.$html.'" target="_BLANK">HTML</a>]' }
 
   if ($type =~ /array/) {
-    $typeLab    =   "array of ".$typeLab }
+    $typeLab    =   'array of "'.$typeLab.'"' }
 
     return $typeLab;
 
