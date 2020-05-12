@@ -145,13 +145,23 @@ def _add_project_specs(oas, s):
 
 def _fix_relative_ref_paths(s):
 
-    for p in s[ "properties" ]:
+    properties = s
+    if "properties" in s:
+        properties = s[ "properties" ]
 
-        if '$ref' in s[ "properties" ][ p ]:
-            s[ "properties" ][ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ '$ref' ] )
-        if 'items' in s[ "properties" ][ p ]:
-            if '$ref' in s[ "properties" ][ p ][ "items" ]:
-                s[ "properties" ][ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ "items" ][ '$ref' ] )
+    for p in properties.keys():
+
+        print(p)
+        if '$ref' in properties[ p ]:
+            properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', properties[ p ][ '$ref' ] )
+        if 'items' in properties[ p ]:
+            if '$ref' in properties[ p ][ "items" ]:
+                properties[ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', './', properties[ p ][ "items" ][ '$ref' ] )
+
+        if "properties" in s:
+            s[ "properties" ].update( { p: properties[ p ] } )
+        else:
+            s.update( { p: properties[ p ] } )
 
     return(s)
 
