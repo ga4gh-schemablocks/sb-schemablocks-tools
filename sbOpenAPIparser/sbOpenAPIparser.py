@@ -45,12 +45,11 @@ def main():
     """podmd
 
 
+
     end_podmd"""
 
     with open( path.join( path.abspath( dir_path ), "config.yaml" ) ) as cf:
         config = yaml.load( cf , Loader=yaml.FullLoader)
-
-    config[ "paths" ][ "headerfile" ] = path.join( path.abspath( dir_path ), "header.yaml" )
 
     args = _get_args()
     config = _check_args(config, args)
@@ -58,8 +57,9 @@ def main():
     with open( config[ "paths" ][ "schemafile" ] ) as f:
         oas = yaml.load( f , Loader=yaml.FullLoader)
 
-    with open( config[ "paths" ][ "headerfile" ] ) as f:
-        hd = yaml.load( f , Loader=yaml.FullLoader)
+    if path.isfile( config[ "paths" ][ "headerfile" ] ):
+        with open( config[ "paths" ][ "headerfile" ] ) as f:
+            config.update( { "header": yaml.load( f , Loader=yaml.FullLoader) } )
 
     for schema in oas["components"]["schemas"]:
 
@@ -69,8 +69,8 @@ def main():
         s = oas["components"]["schemas"][ schema ]
         s[ "title" ] = schema
 
-        for p in hd:
-            s[ p ] = hd[ p ]
+        for p in config[ "header" ]:
+            s[ p ] = config[ "header" ][ p ]
 
         for p in s[ "properties" ]:
 
@@ -122,10 +122,6 @@ The output directory:
 
     if args.header:
         config[ "paths" ][ "headerfile" ] = args.header
-
-    if not path.isfile( config[ "paths" ][ "headerfile" ] ):
-        print("No header file has ben given; please use `-h` to specify")
-        sys.exit( )
 
     return(config)
 

@@ -2,3 +2,18 @@ version: 2020-05-12
 paths:
   out: ""
   file: ""
+  headerfile: False
+header:
+  "$schema": http://json-schema.org/draft-07/schema#
+  "$id": https://schemablocks.org/schemas/__project__/__schema__/__version__
+  meta:
+    contributors:
+      - description: __contributor_name__
+        id: __contributor_ORCID__
+    provenance:
+      - description: __project__
+        id: __URI__
+    used_by:
+      - description: __project__
+        id: __URI__
+    sb_status: playground
