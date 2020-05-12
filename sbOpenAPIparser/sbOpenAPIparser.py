@@ -36,15 +36,23 @@ def _get_args():
 
     return(args)
 
-
 ################################################################################
-
 
 def main():
 
     """podmd
 
+    A single-file OpenAPI schema is read in from a YAML file, and the
+    `components.schemas` object is iterated over, extracting each individual
+    schema.
 
+    This schema is updated with metadata, either from a provided SchemaBlocks
+    header file or with a default from `config.yaml`.
+
+    Some of the parameter values are adjusted (which probably will have to be
+    expanded for different use cases); e.g. the internal reference paths
+    are interpreted as pointing to individual schema files in the current
+    directory.
 
     end_podmd"""
 
@@ -61,38 +69,26 @@ def main():
         with open( config[ "paths" ][ "headerfile" ] ) as f:
             config.update( { "header": yaml.load( f , Loader=yaml.FullLoader) } )
 
-    for schema in oas["components"]["schemas"]:
+    for s_name in oas["components"]["schemas"].keys():
 
-        fn = schema+".yaml"
-        print(fn)
+        f_name = s_name+".yaml"
+        print(f_name)
 
-        s = oas["components"]["schemas"][ schema ]
-        s[ "title" ] = schema
+        s = oas["components"]["schemas"][ s_name ]
 
-        for p in config[ "header" ]:
-            s[ p ] = config[ "header" ][ p ]
+        s = _add_header(config, s)
+        s = _add_project_specs(oas, s)
+        s = _fix_relative_ref_paths(s)
 
-        for p in s[ "properties" ]:
+        s[ "title" ] = s_name
 
-            if '$ref' in s[ "properties" ][ p ]:
-                s[ "properties" ][ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ '$ref' ] )
-            if 'items' in s[ "properties" ][ p ]:
-                if '$ref' in s[ "properties" ][ p ][ "items" ]:
-                    s[ "properties" ][ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ "items" ][ '$ref' ] )
+        if "$id" in s:
+            s[ "$id" ] = re.sub( r"__schema__", s_name, s[ "$id" ] )
+            s[ "$id" ] = re.sub( r"__project__", args.project, s[ "$id" ] )
 
-        s[ "$id" ] = re.sub( r"__schema__", schema, s[ "$id" ] )
-
-        if "info" in oas:
-            if "version" in oas[ "info" ]:
-                s[ "version" ] = oas[ "info" ][ "version" ]
-                s[ "$id" ] = re.sub( r"__version__", s[ "version" ], s[ "$id" ] )
-
-        s[ "$id" ] = re.sub( r"__project__", args.project, s[ "$id" ] )
-
-        ofp = path.join( config[ "paths" ][ "out" ], fn )
+        ofp = path.join( config[ "paths" ][ "out" ], f_name )
         with open(ofp, 'w') as of:
             docs = yaml.dump(s, of)
-
 
 ################################################################################
 
@@ -124,6 +120,40 @@ The output directory:
         config[ "paths" ][ "headerfile" ] = args.header
 
     return(config)
+
+################################################################################
+
+def _add_header(config, s):
+
+    for p in config[ "header" ]:
+        s[ p ] = config[ "header" ][ p ]
+
+    return(s)
+
+################################################################################
+
+def _add_project_specs(oas, s):
+
+    if "info" in oas:
+        if "version" in oas[ "info" ]:
+            s[ "version" ] = oas[ "info" ][ "version" ]
+            s[ "$id" ] = re.sub( r"__version__", s[ "version" ], s[ "$id" ] )
+
+    return(s)
+
+################################################################################
+
+def _fix_relative_ref_paths(s):
+
+    for p in s[ "properties" ]:
+
+        if '$ref' in s[ "properties" ][ p ]:
+            s[ "properties" ][ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ '$ref' ] )
+        if 'items' in s[ "properties" ][ p ]:
+            if '$ref' in s[ "properties" ][ p ][ "items" ]:
+                s[ "properties" ][ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', './', s[ "properties" ][ p ][ "items" ][ '$ref' ] )
+
+    return(s)
 
 ################################################################################
 ################################################################################
