@@ -9,6 +9,13 @@ dir_path = path.dirname(path.abspath(__file__))
 
 """podmd
 
+The `sbOpenAPIparser` tool reads schema files defined using OpenAPI and extracts
+the embedded schemas as single YAML documents, with an added metadata header
+compatible to use in [SchemaBlocks](https://schemablocks.org/categories/schemas.html)
+schema documents.
+
+##### Examples
+
 * `python3 sbOpenAPIparser.py -o ~/GitHub/ga4gh-schemablocks/sb-discovery-search/schemas/ -f ~/GitHub/ga4gh-schemablocks/sb-discovery-search/source/search-api.yaml -p "sb-discovery-search" -m ~/GitHub/ga4gh-schemablocks/sb-discovery-search/source/header.yaml`
 
 podmd"""
@@ -94,10 +101,10 @@ def _check_args(config, args):
     if not args.project:
         print("No project name has been provided; please use `-p` to specify")
         sys.exit( )
-  
+
     if args.outdir:
         config[ "paths" ][ "out" ] = args.outdir
-        
+
     if not path.isdir( config[ "paths" ][ "out" ] ):
         print("""
 The output directory:
@@ -108,20 +115,20 @@ The output directory:
 
     if args.file:
         config[ "paths" ][ "schemafile" ] = args.file
-        
+
     if not path.isfile( config[ "paths" ][ "schemafile" ] ):
         print("No inputfile has ben given; please use `-f` to specify")
         sys.exit( )
 
     if args.header:
         config[ "paths" ][ "headerfile" ] = args.header
-        
+
     if not path.isfile( config[ "paths" ][ "headerfile" ] ):
         print("No header file has ben given; please use `-h` to specify")
         sys.exit( )
 
     return(config)
-    
+
 ################################################################################
 ################################################################################
 ################################################################################
