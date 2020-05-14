@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-import sys, yaml, re, json
+import sys, yaml, re
 from os import path as path
 import argparse
 
@@ -10,7 +10,7 @@ dir_path = path.dirname(path.abspath(__file__))
 """podmd
 
 The `sbOpenAPIparser` tool reads schema files defined using OpenAPI and extracts
-the embedded schemas as single YAML documents, with an added metadata header
+the embedded schemas as individual YAML documents, with an added metadata header
 compatible to use in [SchemaBlocks](https://schemablocks.org/categories/schemas.html)
 schema documents.
 
@@ -28,8 +28,8 @@ def _get_args():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--outdir", help="path to the output directory")
-    parser.add_argument("-f", "--file", help="OpenAPI schema file to be ripped apart")
-    parser.add_argument("-m", "--header", help="SchemaBlocks format metadata header")
+    parser.add_argument("-f", "--schemafile", help="OpenAPI schema file to be ripped apart")
+    parser.add_argument("-m", "--headerfile", help="SchemaBlocks format metadata header")
     parser.add_argument("-p", "--project", help="Project id")
 
     args = parser.parse_args()
@@ -62,11 +62,11 @@ def main():
     args = _get_args()
     config = _check_args(config, args)
 
-    with open( config[ "paths" ][ "schemafile" ] ) as f:
+    with open( config[ "schemafile" ] ) as f:
         oas = yaml.load( f , Loader=yaml.FullLoader)
 
-    if path.isfile( config[ "paths" ][ "headerfile" ] ):
-        with open( config[ "paths" ][ "headerfile" ] ) as f:
+    if path.isfile( config[ "headerfile" ] ):
+        with open( config[ "headerfile" ] ) as f:
             config.update( { "header": yaml.load( f , Loader=yaml.FullLoader) } )
 
     for s_name in oas["components"]["schemas"].keys():
@@ -84,9 +84,9 @@ def main():
 
         if "$id" in s:
             s[ "$id" ] = re.sub( r"__schema__", s_name, s[ "$id" ] )
-            s[ "$id" ] = re.sub( r"__project__", args.project, s[ "$id" ] )
+            s[ "$id" ] = re.sub( r"__project__", config[ "project" ], s[ "$id" ] )
 
-        ofp = path.join( config[ "paths" ][ "out" ], f_name )
+        ofp = path.join( config[ "outdir" ], f_name )
         with open(ofp, 'w') as of:
             docs = yaml.dump(s, of)
 
@@ -94,30 +94,30 @@ def main():
 
 def _check_args(config, args):
 
-    if not args.project:
+    if config[ "outdir" ]:
+        config[ "outdir" ] = path.join( path.abspath( dir_path ), path.abspath( dir_path ), config[ "outdir" ])
+    if config[ "schemafile" ]:
+        config[ "schemafile" ] = path.join( path.abspath( dir_path ), path.abspath( dir_path ), config[ "schemafile" ])
+
+    for a in vars(args).keys():
+        if vars(args)[a]:
+            config[ a ] = vars(args)[a]
+
+    if not config[ "project" ]:
         print("No project name has been provided; please use `-p` to specify")
         sys.exit( )
 
-    if args.outdir:
-        config[ "paths" ][ "out" ] = args.outdir
-
-    if not path.isdir( config[ "paths" ][ "out" ] ):
+    if not path.isdir( config[ "outdir" ] ):
         print("""
 The output directory:
     {}
 ...does not exist; please use `-o` to specify
-""".format(config[ "paths" ][ "out" ]))
+""".format(config[ "outdir" ]))
         sys.exit( )
 
-    if args.file:
-        config[ "paths" ][ "schemafile" ] = args.file
-
-    if not path.isfile( config[ "paths" ][ "schemafile" ] ):
+    if not path.isfile( config[ "schemafile" ] ):
         print("No inputfile has ben given; please use `-f` to specify")
         sys.exit( )
-
-    if args.header:
-        config[ "paths" ][ "headerfile" ] = args.header
 
     return(config)
 
@@ -151,7 +151,6 @@ def _fix_relative_ref_paths(s):
 
     for p in properties.keys():
 
-        print(p)
         if '$ref' in properties[ p ]:
             properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', properties[ p ][ '$ref' ] )
         if 'items' in properties[ p ]:

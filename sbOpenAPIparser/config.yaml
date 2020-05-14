@@ -1,8 +1,10 @@
-version: 2020-05-12
-paths:
-  out: ""
-  file: ""
-  headerfile: False
+version: 2020-05-14
+project: ''
+# if predefined paths -> relative to script!
+outdir: ''
+schemafile: ''
+headerfile: ''
+# `__schema__` is inserted for each during parsing; other values can be defined
 header:
   "$schema": http://json-schema.org/draft-07/schema#
   "$id": https://schemablocks.org/schemas/__project__/__schema__/__version__
