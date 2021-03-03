@@ -16,6 +16,7 @@ schema_repos:
   playground:
     schema_dirs:
       - schemas
+    target_doc_dirname: playground
   template:
     schema_dirs:
       - schemas

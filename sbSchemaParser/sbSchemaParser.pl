@@ -7,118 +7,15 @@ use JSON::XS;
 use YAML::XS qw(LoadFile DumpFile);
 use Data::Dumper;
 
-$Data::Dumper::Sortkeys =   1;
-$YAML::XS::QuoteNumericStrings	=		0;
+$Data::Dumper::Sortkeys = 1;
+$YAML::XS::QuoteNumericStrings = 0;
 
 binmode STDOUT, ":utf8";
-my @here_path   =   splitdir(abs_path($0));
+my @here_path = splitdir(abs_path($0));
 pop @here_path;
-my $here_path   =   catdir(@here_path);
-my $config      =   LoadFile(catfile($here_path, 'config.yaml')) or die "¡No config.yaml file in this path!";
+my $here_path = catdir(@here_path);
+my $config = LoadFile(catfile($here_path, 'config.yaml')) or die "¡No config.yaml file in this path!";
 bless $config;
-
-=podmd
-
-The `sbSchemaParser.pl` Perl script parses YAML schema definitions 
-written in [_JSON Schema_](https://json-schema.org) which use the standard GA4GH 
-[SchemaBlocks {S}[B]](http://schemablocks.org) structure, into 
-
-* JSON versions of the schemas (unprocessed), to serve as the reference
-schema versions
-* Markdown documentation, both in plain Markdown and as sources for "Jekyll" 
-based Markdown => HTML generation by Github Pages (or a local installation)
-* example `.json` data files, from the inline `examples`
-
-The output files are generated relative to the script path. This assumes a
-directory structure, in which the different repositories are contained in the
-same root (i.e. organization) directory, and the script itself is inside a
-first order directory in one of the repositories. The specific names of all of 
-the directories can be modified in `config.yaml`:
-
-```
-this-organization
-  |
-  |-- tools
-  |     |
-  |     |-- sbSchemaParser
-  |     |     |
-  |           |-- sbSchemaParser.pl # this file
-  |           |-- config.yaml       # in- and output path definitions
-  |
-  |-- sb-external-schemas-name      # example for (1 or 1+) schema repositories
-  |     |
-  |     |-- source
-  |     |     |
-  |     |     |-- v1.0.1						# versioned representation of the donor code
-  |     |
-  |     |-- schemas
-  |     |     |
-  |     |     |-- Schema.yaml
-  |     |     |-- OtherSchema.yaml
-  |     |     |-- ...
-  |     |
-  |     |-- working
-  |     |     |-- SomethingNew.yaml     
-  |     |     |-- ...
-  |     |     
-  |     |-- generated               # config.yaml -> "out_dirnames"
-  |           |
-  |           |-- doc
-  |           |     |-- Schema.md
-  |           |     |-- OtherSchema.md
-  |           |     |-- ...
-  |           |
-  |           |-- json
-  |           |     |    
-  |           |     |-- current
-  |           |     |     |-- Schema.json
-  |           |     |     |-- ...
-  |           |     |    
-  |           |     |-- v0.0.1
-  |           |     |     |-- Schema.json
-  |           |     |     |-- ...
-  |           |     |    
-  |           |     |-- v... 
-  |           |
-  |           |-- examples
-  |   
-  |-- (webdocs.repo)                # web repository (Jekyll based)
-        |
-        |-- (webdocs.jekylldir)
-        |     |
-        |     |-- Schema.md
-        |     |-- ...
-        |
-        |-- (webdocs.schemadir)
-              |
-              |     |-- Schema.json
-              |     |-- ...
-              |    
-              |-- v0.0.1
-              |     |-- Schema.json
-              |     |-- ...
-              |    
-              |-- v...
-```
-
-#### Usage
-
-The `sbSchemaParser.pl` script has to be run in a _local_ version of the 
-repository structure. In principle, any relative directory locations should be 
-possible if specified in the `config.yaml` defaults file, though a reasonable 
-approach is to use a "organization -> projects" structure as above.
-
-The script is executed with
-
-```
-perl sbSchemaParser.pl
-```
-
-The only current option is to provide a "-filter" argument against the schema 
-file names; e.g. `perl sbSchemaParser.pl -filter Age` will only process schemas 
-with "Age" in their file name.
-
-=cut
 
 $config->{here_path} = $here_path;
 $config->{git_root_dir} = realpath($here_path.'/../..');
@@ -130,11 +27,6 @@ $args{-filter} ||= q{};
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
 _process_src($config);
-
-# invoking the self-documentation of this script
-
-if (-f $podmd) {
-  `perl $podmd` }
   
 exit;
 
@@ -165,17 +57,27 @@ per repository) are specified in the `config.yaml` file.
 				$src_repo,
 				$src_dir
 			);
+			
+			# the name of the schema dir is extracted from the $id path, unless it has
+			# been specified in the config, as `target_doc_dirname`.
+			my $target_doc_dirname = "";
+			
+			if (grep{ /^target_doc_dirname$/ } keys %{$config->{schema_repos}->{$src_repo}}) {
+				$target_doc_dirname = $config->{schema_repos}->{$src_repo}->{target_doc_dirname};
+			}
+					
 			opendir DIR, $src_path;
 			foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
 
-			my $paths = {
-				schema_file => $schema,
-				schema_path => catfile($src_path, $schema),
-				schema_dir => $src_dir,
-				schema_repo => $src_repo,
-			};
+				my $paths = {
+					schema_file => $schema,
+					schema_path => catfile($src_path, $schema),
+					schema_dir => $src_dir,
+					schema_repo => $src_repo,
+					doc_dirname => $target_doc_dirname
+				};
 
-			_process_yaml($config, $paths);
+				_process_yaml($config, $paths);
 
 			}
 			close DIR;
@@ -384,16 +286,18 @@ The class "$id" values are assumed to have a specific structure, where
 	my $config = shift;
 	my $data = shift;
 
-	my @id_comps  =   split('/', $data->{'$id'}); 
+	my @id_comps = split('/', $data->{'$id'}); 
 	$paths->{version} = pop @id_comps;
 	$paths->{class} = pop @id_comps;
 	$paths->{project} = pop @id_comps;
-
+	
+	my $doc_dirname = $paths->{project};
+	
+	if ($paths->{doc_dirname} =~ /^\w[^\/]+?\w$/) {
+		$doc_dirname = $paths->{doc_dirname} }
+	
 	if (! $data->{examples}) {
 		$data->{examples} = [] }
-
-# print Dumper(@id_comps, $paths->{project}, $paths->{class}, $paths->{version});
-# print Dumper($data->{examples});
 
 	my $fileClass = $paths->{schema_file};
 	$fileClass =~ s/\.\w+?$//;
@@ -443,7 +347,7 @@ The class "$id" values are assumed to have a specific structure, where
 		$config->{git_root_dir},
 		$config->{webdocs}->{repo},
 		$config->{webdocs}->{schemadir},
-		$paths->{project},
+		$doc_dirname,
 		'current',
 		$paths->{class}.'.json'
 		),
@@ -454,7 +358,7 @@ The class "$id" values are assumed to have a specific structure, where
 			$config->{git_root_dir},
 			$config->{webdocs}->{repo},
 			$config->{webdocs}->{schemadir},
-			$paths->{project},
+			$doc_dirname,
 			$paths->{version},
 			$paths->{class}.'.json'
 		),
@@ -465,7 +369,7 @@ The class "$id" values are assumed to have a specific structure, where
 		$config->{git_root_dir},
 		$config->{webdocs}->{repo},
 		$config->{webdocs}->{jekylldir},
-		$paths->{project},
+		$doc_dirname,
 		$config->{generator_prefix}.$paths->{class}.'.md'
 		),
 		content => q{}
@@ -486,13 +390,13 @@ The class "$id" values are assumed to have a specific structure, where
 	);
 	$paths->{web_link_json}   =   join('/',
 		$config->{webdocs}->{web_schemas_rel},
-		$paths->{project},
+		$doc_dirname,
 		'current',
 		$paths->{class}.'.json'
 	);
 	$paths->{doc_link_html} = join('/',
 		$config->{webdocs}->{web_html_rel},
-		$paths->{project},
+		$doc_dirname,
 		$paths->{class}.'.html'
 	);
 
@@ -560,10 +464,11 @@ descriptions and examples.
 
 =cut
 
-  foreach my $property ( sort keys %{ $data->{properties} } ) {
-    my $label   =   _format_property_type_html($data->{properties}->{$property});
-    my $description	=		_format_property_description($data->{properties}->{$property});
-    $md         .=  <<END;
+	foreach my $property ( sort keys %{ $data->{properties} } ) {
+
+		my $label =   _format_property_type_html($data->{properties}->{$property});
+		my $description	= _format_property_description($data->{properties}->{$property});
+		$md .= <<END;
 
 #### $property
 
@@ -572,17 +477,16 @@ descriptions and examples.
 $description
 
 END
-	my $propEx	=		_format_property_examples($data->{properties}->{$property});
+	my $propEx = _format_property_examples($data->{properties}->{$property});
 		if (@$propEx > 0) {
-		$md         .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
-		foreach (@$propEx) {
-		  $md       .=  "```\n".$_."```\n";
+			$md .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
+			foreach (@$propEx) {
+				$md .= "```\n".$_."```\n";
+			}
 		}
-    }
+	}
 
-  }
-
-  return $md;
+	return $md;
 
 }
 
@@ -607,10 +511,11 @@ the page.
 
 =cut
 
-  my $config    =   shift;
-  my $paths     =   shift;
-  my $data      =   shift;
-  return  <<END;
+	my $config = shift;
+	my $paths = shift;
+	my $data = shift;
+	
+	return  <<END;
 ---
 title: $paths->{class}
 layout: default
@@ -634,7 +539,7 @@ END
 
 sub _format_property_type_html {
 
-  my $prop_data =   shift;
+	my $prop_data = shift;
   
 =podmd
 ##### Hacking the "$ref is a solitary attribute" problem
@@ -650,42 +555,43 @@ the attributes). We'll hope for a more elegant solution ...
 
 =cut
 
-	$prop_data    =   _remap_allof($prop_data);
+	$prop_data = _remap_allof($prop_data);
 		  
-  my $typeLab;
-  my $type      =   q{};
-  if ($prop_data->{type}) {
-  	$type				=		$prop_data->{type} }
-  if (
-  	$type !~ /.../
-  	&&
-  	$prop_data->{'$ref'} =~ /.../
-  ) { $typeLab  =   $prop_data->{'$ref'} }
-  elsif ($type =~ /array/) {
-  	if ($prop_data->{items}->{'$ref'} =~ /.../) {
-    	$typeLab  =   $prop_data->{items}->{'$ref'} }
-  	elsif ( ref($prop_data->{items}) !~ /HASH/ ) {
-    	$typeLab  =   $prop_data->{items} }
-    else {
-    	$typeLab  =   $prop_data->{items}->{type} }
-  }
-  else {
-    $typeLab    =   $type;
-    if ($prop_data->{"format"} =~ /.../) {
-    	$typeLab	.=	' ('.$prop_data->{"format"}.')' }
-  }
+	my $typeLab;
+	my $type = q{};
+	if ($prop_data->{type}) {
+		$type = $prop_data->{type} }
+	if (
+		$type !~ /.../
+		&&
+		$prop_data->{'$ref'} =~ /.../
+	) {
+		$typeLab  =   $prop_data->{'$ref'} }
+	elsif ($type =~ /array/) {
+		if ($prop_data->{items}->{'$ref'} =~ /.../) {
+			$typeLab  =  $prop_data->{items}->{'$ref'} }
+		elsif ( ref($prop_data->{items}) !~ /HASH/ ) {
+			$typeLab =   $prop_data->{items} }
+		else {
+			$typeLab =   $prop_data->{items}->{type} }
+	} else {
+		$typeLab = $type;
+		if ($prop_data->{"format"} =~ /.../) {
+			$typeLab .=	' ('.$prop_data->{"format"}.')' }
+	}
 
-  if ($typeLab =~ /\/[\w\-]+?\.\w+?$/) {
-    my $yaml    =   $typeLab;
-    my $html    =   $typeLab;
-    $html       =~  s/\.\w+?$/.html/;
-    $html       =~  s/v\d+?\.\d+?\.\d+?\///;
-    $typeLab    .=  ' [<a href="'.$yaml.'" target="_BLANK">SRC</a>] [<a href="'.$html.'" target="_BLANK">HTML</a>]' }
+	if ($typeLab =~ /\/[\w\-]+?\.\w+?$/) {
+		my $yaml = $typeLab;
+		my $html = $typeLab;
+		$html =~ s/\.\w+?$/.html/;
+		$html =~ s/v\d+?\.\d+?\.\d+?\///;
+		$typeLab .= ' [<a href="'.$yaml.'" target="_BLANK">SRC</a>] [<a href="'.$html.'" target="_BLANK">HTML</a>]';
+	}
 
-  if ($type =~ /array/) {
-    $typeLab    =   'array of "'.$typeLab.'"' }
+	if ($type =~ /array/) {
+		$typeLab = 'array of "'.$typeLab.'"' }
 
-    return $typeLab;
+	return $typeLab;
 
 }
 
