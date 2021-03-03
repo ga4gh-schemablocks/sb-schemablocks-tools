@@ -2,40 +2,40 @@
 github_organisation: ga4gh-schemablocks
 site_domain_name: schemablocks.org
 url: 'https://schemablocks.org'
-tools_repo: tools
 tags:
   - code
   - specification
 categories:
   - schemas
   - howto
-schema_repos:
-  blocks:
+tools_repo: tools
+schema_repos: # project directories on the same level as the `tools` repo
+  - project_dir: blocks
     schema_dirs:
       - schemas
-  playground:
+  - project_dir: playground
     schema_dirs:
       - schemas
     target_doc_dirname: playground
-  template:
+  - project_dir: template
     schema_dirs:
       - schemas
-  sb-phenopackets:
+  - project_dir: sb-phenopackets
     schema_dirs:
       - schemas
-  sb-checksum:
+  - project_dir: sb-checksum
     schema_dirs:
       - schemas
-  sb-vr-spec:
+  - project_dir: sb-vr-spec
     schema_dirs:
       - schemas
-  sb-beacon-api:
+  - project_dir: sb-beacon-api
     schema_dirs:
       - schemas
-  sb-duo:
+  - project_dir: sb-duo
     schema_dirs:
       - schemas
-  sb-discovery-search:
+  - project_dir: sb-discovery-search
     schema_dirs:
       - schemas
 #    - working
@@ -61,4 +61,3 @@ prefix_expansions:
   PMID: 'https://www.ncbi.nlm.nih.gov/pubmed/'
 links:
   sb_status_levels: "https://schemablocks.org/about/sb-status-levels.html"
-podmd: 'tools/podMD/podmd.pl'

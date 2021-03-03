@@ -50,11 +50,11 @@ per repository) are specified in the `config.yaml` file.
 
 	my $config = shift;
 
-	foreach my $src_repo (keys %{ $config->{schema_repos} }) {
-		foreach my $src_dir (@{ $config->{schema_repos}->{$src_repo}->{schema_dirs} }) {
+	foreach my $src_repo (@{ $config->{schema_repos} }) {
+		foreach my $src_dir (@{ $src_repo->{schema_dirs} }) {
 			my $src_path = catdir(
 				$config->{git_root_dir},
-				$src_repo,
+				$src_repo->{project_dir},
 				$src_dir
 			);
 			
@@ -62,8 +62,8 @@ per repository) are specified in the `config.yaml` file.
 			# been specified in the config, as `target_doc_dirname`.
 			my $target_doc_dirname = "";
 			
-			if (grep{ /^target_doc_dirname$/ } keys %{$config->{schema_repos}->{$src_repo}}) {
-				$target_doc_dirname = $config->{schema_repos}->{$src_repo}->{target_doc_dirname};
+			if (grep{ /^target_doc_dirname$/ } keys %{ $src_repo }) {
+				$target_doc_dirname = $src_repo->{target_doc_dirname};
 			}
 					
 			opendir DIR, $src_path;
@@ -73,7 +73,7 @@ per repository) are specified in the `config.yaml` file.
 					schema_file => $schema,
 					schema_path => catfile($src_path, $schema),
 					schema_dir => $src_dir,
-					schema_repo => $src_repo,
+					schema_repo => $src_repo->{project_dir},
 					doc_dirname => $target_doc_dirname
 				};
 
