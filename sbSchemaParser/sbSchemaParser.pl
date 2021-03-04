@@ -460,25 +460,32 @@ descriptions and examples.
 
 	foreach my $property ( sort keys %{ $data->{properties} } ) {
 
-		my $label =  _format_property_type_html($data->{properties}->{$property});
+		my $label = _format_property_type_html($data->{properties}->{$property});
 		my $description	= _format_property_description($data->{properties}->{$property});
 		$md .= <<END;
 
 #### $property
 
 * type: $label
+END
+		if (grep {/value/} keys %{ $data->{properties}->{$property} } ) {	
+			$md .=  "* value: ".$data->{properties}->{$property}->{value}."  \n\n" }
+
+		$md .= <<END;
 
 $description
 
 END
 
-	my $propEx = _format_property_examples($data->{properties}->{$property});
+		my $propEx = _format_property_examples($data->{properties}->{$property});
 		if (@$propEx > 0) {
 			$md .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
 			foreach (@$propEx) {
 				$md .= "```\n".$_."```\n";
 			}
 		}
+		
+		
 	}
 
 	return $md;
@@ -660,6 +667,17 @@ sub _format_property_examples {
 	foreach my $example (@{ $prop_data->{'examples'} }) {
 		if (grep { $prop_data->{type} =~ /$_/ } qw(num int) ) {
 			$example *= 1 }
+		elsif (
+			($prop_data->{type} eq 'array')
+			&&
+			(grep { $prop_data->{items}->{type} =~ /$_/ } qw(num int) )
+		) {
+			my $ti = [ ];
+			foreach (@$example) {
+				push(@$ti, $_ *= 1);
+			}
+			$example = $ti;		
+		}
 		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($example));
 	}
 
@@ -683,19 +701,19 @@ sub _expand_CURIEs {
 #### `_expand_CURIEs`
 
 This function expands prefixes in identifiers, based on the parameters provided 
-in `config.yml`. This is thought as a helper for some script/website specific 
+in `config.yaml`. This is thought as a helper for some script/website specific 
 linking, not as a general CURIE expansion utility.
 
 =cut
 
 	my $config = shift;
 	my $curie = shift;
-
+	
 	if (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} }) {
-		my $pr = (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
+		my $pre = (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
 		$curie =~ s/$pre\:/$config->{prefix_expansions}->{$pre}/;
 	}
-
+	
 	return $curie;
 
 }
