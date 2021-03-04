@@ -10,6 +10,14 @@ schema versions
 based Markdown => HTML generation by Github Pages (or a local installation)
 * example `.json` data files, from the inline `examples`
 
+#### Processing Schema Source Directories
+
+The script parses through the associated source repositories which are required
+to reside inside a unified root (`git_root_dir`). The names of the (one or
+several) repositories and their schema file source directories (one or several
+per repository) are specified in the `config.yaml` file.
+
+
 The output files are generated relative to the script path. This assumes a
 directory structure, in which the different repositories are contained in the
 same root (i.e. organization) directory, and the script itself is inside a

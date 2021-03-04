@@ -22,7 +22,7 @@ $config->{git_root_dir} = realpath($here_path.'/../..');
 my $podmd = catfile($config->{git_root_dir}, $config->{podmd});
 
 # command line input
-my %arg = @ARGV;
+my %args = @ARGV;
 $args{-filter} ||= q{};
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
@@ -38,16 +38,6 @@ exit;
 
 sub _process_src {
 
-=podmd
-#### Processing Schema Source Directories
-
-The script parses through the associated source repositories which are required
-to reside inside a unified root (`git_root_dir`). The names of the (one or
-several) repositories and their schema file source directories (one or several
-per repository) are specified in the `config.yaml` file.
-
-=cut
-
 	my $config = shift;
 
 	foreach my $src_repo (@{ $config->{schema_repos} }) {
@@ -60,8 +50,7 @@ per repository) are specified in the `config.yaml` file.
 			
 			# the name of the schema dir is extracted from the $id path, unless it has
 			# been specified in the config, as `target_doc_dirname`.
-			my $target_doc_dirname = "";
-			
+			my $target_doc_dirname = "";			
 			if (grep{ /^target_doc_dirname$/ } keys %{ $src_repo }) {
 				$target_doc_dirname = $src_repo->{target_doc_dirname};
 			}
@@ -76,6 +65,10 @@ per repository) are specified in the `config.yaml` file.
 					schema_repo => $src_repo->{project_dir},
 					doc_dirname => $target_doc_dirname
 				};
+				
+				if ($config->{args}->{-filter} =~ /.../) {
+					if ($schema !~ /$config->{args}->{-filter}/) {
+						next } }
 
 				_process_yaml($config, $paths);
 
@@ -94,11 +87,7 @@ sub _process_yaml {
 	my $paths = shift;
 
 	bless $paths;
-	if ($config->{args}->{-filter} =~ /.../) {
-
-		if ($paths->{schema_file} !~ /$config->{args}->{-filter}/) {
-		return } }
-
+	
 	print "Reading YAML file \"$paths->{schema_path}\"\n";
 
 	my $data = LoadFile($paths->{schema_path});
@@ -157,6 +146,8 @@ markdown content, producing
   </tr>
 END
 
+	# metadata header parsing
+
 	foreach my $attr (qw(provenance used_by contributors)) {
 		if ($data->{meta}->{$attr}) {
 			my $label =   $attr;
@@ -195,7 +186,9 @@ address.
 
 		}
 	}
-  		
+	
+	# / metadata header parsing
+
   	$output->{md} .= <<END;
 
   <tr>
@@ -432,10 +425,10 @@ END
 
 sub _parse_properties {
 
-  my $data      =   shift;
-  my $md        =   shift;
+	my $data = shift;
+	my $md = shift;
 
-  $md           .=  <<END;
+	$md .= <<END;
 
 ### Properties
 
@@ -446,17 +439,18 @@ sub _parse_properties {
   </tr>
 END
 
-  foreach my $property ( sort keys %{ $data->{properties} } ) {
-    my $label   =   _format_property_type_html($data->{properties}->{$property});
-    $md         .=  <<END;
+	foreach my $property ( sort keys %{ $data->{properties} } ) {
+		my $label = _format_property_type_html($data->{properties}->{$property});
+		$md .= <<END;
   <tr>
     <th>$property</th>
     <td>$label</td>
   </tr>
 END
-  }
 
-  $md           .=  "\n".'</table>'."\n\n";
+	}
+
+	$md .= "\n".'</table>'."\n\n";
 
 =podmd
 The property overview is followed by the listing of the properties, including
@@ -466,7 +460,7 @@ descriptions and examples.
 
 	foreach my $property ( sort keys %{ $data->{properties} } ) {
 
-		my $label =   _format_property_type_html($data->{properties}->{$property});
+		my $label =  _format_property_type_html($data->{properties}->{$property});
 		my $description	= _format_property_description($data->{properties}->{$property});
 		$md .= <<END;
 
@@ -477,6 +471,7 @@ descriptions and examples.
 $description
 
 END
+
 	my $propEx = _format_property_examples($data->{properties}->{$property});
 		if (@$propEx > 0) {
 			$md .=  "##### `$property` Value "._pluralize("Example", $propEx)."  \n\n";
@@ -615,23 +610,25 @@ specifications right now) which would being reduced to one
 
 =cut
 
-  my $prop_data =   shift;
-  my $prop      =   {};
+	my $prop_data =   shift;
+	my $prop      =   {};
 
-	if (ref($prop_data) !~ /HASH/) { return $prop_data }
-	if (! $prop_data->{allof}) { return $prop_data }
+	if (ref($prop_data) !~ /HASH/) {
+		return $prop_data }
+	if (! $prop_data->{allof}) {
+		return $prop_data }
 
-  foreach my $of (@{ $prop_data->{allof} }) {		  
-    if ((keys %$of )[0] eq '$ref') {
-      $prop->{'$ref'}  =   $of->{'$ref'} }
-    else {
-      foreach (sort keys %$of) {
-        $prop->{$_}    =   $of->{$_};
-      }
-    }	  
-  }
- 
-  return $prop;
+	foreach my $of (@{ $prop_data->{allof} }) {		  
+		if ((keys %$of )[0] eq '$ref') {
+			$prop->{'$ref'} = $of->{'$ref'} }
+		else {
+			foreach (sort keys %$of) {
+				$prop->{$_} = $of->{$_};
+			}
+		}	  
+	}
+
+	return $prop;
   
 }
  
@@ -640,14 +637,10 @@ specifications right now) which would being reduced to one
 
 sub _format_property_description {
 
-=podmd
+	my $prop_data = shift;
+	$prop_data = _remap_allof($prop_data);
 
-=cut
-
-  my $prop_data =   shift;
-	$prop_data    =   _remap_allof($prop_data);
-
-  return $prop_data->{description};
+	return $prop_data->{description};
 
 }
 
@@ -660,16 +653,17 @@ sub _format_property_examples {
 
 =cut
 
-  my $prop_data =   shift;
-  my $ex_md			=		[];	
-	$prop_data    =   _remap_allof($prop_data);
- 
+	my $prop_data = shift;
+	my $ex_md = [];	
+	$prop_data = _remap_allof($prop_data);
+
 	foreach my $example (@{ $prop_data->{'examples'} }) {
-		if (grep { $prop_data->{type} =~ /$_/ } qw(num int) ) { $example *= 1 }
+		if (grep { $prop_data->{type} =~ /$_/ } qw(num int) ) {
+			$example *= 1 }
 		push(@$ex_md, JSON::XS->new->pretty( 1 )->allow_nonref->canonical()->encode($example));
 	}
 
-  return $ex_md;
+	return $ex_md;
 
 }
 
@@ -694,15 +688,15 @@ linking, not as a general CURIE expansion utility.
 
 =cut
 
-  my $config    =   shift;
-  my $curie     =   shift;
+	my $config = shift;
+	my $curie = shift;
 
-  if (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} }) {
-    my $pre     =   (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
-    $curie      =~  s/$pre\:/$config->{prefix_expansions}->{$pre}/;
-  }
+	if (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} }) {
+		my $pr = (grep{ $curie =~ /^$_\:/ } keys %{ $config->{prefix_expansions} })[0];
+		$curie =~ s/$pre\:/$config->{prefix_expansions}->{$pre}/;
+	}
 
-  return $curie;
+	return $curie;
 
 }
 
@@ -711,16 +705,16 @@ linking, not as a general CURIE expansion utility.
 
 sub _export_outfile {
   
-  my $fileObj   =   shift;
+	my $fileObj = shift;
 
-  print "writing $fileObj->{path}\n";
-  my $dir     	=   $fileObj->{path};
-  $dir        	=~  s/\/[^\/]+?\.\w+?$//;
-  if (! -d $dir) {
-  	make_path($dir) }
-  open  (FILE, ">", $fileObj->{path}) || warn '!!! output file '. $fileObj->{path}.' could not be created !!!';
-  print FILE  $fileObj->{content}."\n";
-  close FILE;
+	print "\n=> $fileObj->{path}\n";
+	my $dir = $fileObj->{path};
+	$dir =~ s/\/[^\/]+?\.\w+?$//;
+	if (! -d $dir) {
+		make_path($dir) }
+	open  (FILE, ">", $fileObj->{path}) || warn '!!! output file '. $fileObj->{path}.' could not be created !!!';
+	print FILE  $fileObj->{content}."\n";
+	close FILE;
   
 }
 
@@ -728,8 +722,11 @@ sub _export_outfile {
 ################################################################################
 
 sub _pluralize {
-  my $word      =   shift;
-  my $list      =   shift;
-  if (@$list > 1) { $word .= 's' }
-  return $word;
+
+	my $word = shift;
+	my $list = shift;
+	if (@$list > 1) {
+		$word .= 's' }
+	return $word;
+
 }
