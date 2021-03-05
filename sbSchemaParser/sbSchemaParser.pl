@@ -26,7 +26,7 @@ my %args = @ARGV;
 $args{-filter} ||= undef;
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
-_process_src($config);
+$config->_process_src();
   
 exit;
 
@@ -69,7 +69,7 @@ sub _process_src {
 					if ($schema !~ /$config->{args}->{-filter}/) {
 						next } }
 
-				_process_yaml($config, $paths);
+				$config->_process_yaml($paths);
 
 			}
 			close DIR;
@@ -104,15 +104,18 @@ does not match.
 
 =cut
 
-	if ($data->{title} !~ /^\w[\w\.\-]+?$/) { return }
+	my @errors = ();
 
 	$paths->_create_file_paths($config, $data);
-	foreach my $outFile (grep{ /outfile_\w*?json/} keys %{ $paths }) {
-		_export_outfile($paths->{$outFile});
-	}
 
-	if ($data->{meta}->{sb_status} !~ /\w/) {
-		print "¡¡¡ No sb_status value in $data->{title} => skipping !!!\n";
+	if ($data->{title} !~ /^\w[\w\.\-]+?$/) {
+		push(@errors, '¡¡¡ No correct "title" value in schema '.$paths->{$schema_file}.'!') }
+
+	if (! grep{ /^$data->{meta}->{sb_status}$/ } @{ $config->{status_levels} }) {
+		push(@errors, '¡¡¡ No correct "sb_status" value in '.$paths->{$schema_file}.' => skipping !!!') }
+		
+	if (@errors > 0) {
+		print "\n".join("\n", @errors)."\n";
 		return;
 	}
 
@@ -233,9 +236,7 @@ END
 	$paths->{outfile_plain_md}->{content} = $output->{md};
 	$paths->{outfile_jekyll_current_md}->{content} = $output->{jekyll_head}.$output->{md}.$config->{schema_disclaimer}."\n";
 
-	foreach my $outFile (grep{ /outfile_\w+?_md/} keys %{ $paths }) {
-		_export_outfile($paths->{$outFile});
-	}
+	$paths->_export_outfiles();
 
 }
 
@@ -720,18 +721,22 @@ linking, not as a general CURIE expansion utility.
 ################################################################################
 ################################################################################
 
-sub _export_outfile {
-  
-	my $fileObj = shift;
+sub _export_outfiles {
 
-	print "\n=> $fileObj->{path}\n";
-	my $dir = $fileObj->{path};
-	$dir =~ s/\/[^\/]+?\.\w+?$//;
-	if (! -d $dir) {
-		make_path($dir) }
-	open  (FILE, ">", $fileObj->{path}) || warn '!!! output file '. $fileObj->{path}.' could not be created !!!';
-	print FILE  $fileObj->{content}."\n";
-	close FILE;
+	my $paths = shift;
+	
+	foreach (grep{ /outfile_/} keys %{ $paths }) {
+
+		print "\n=> $paths->{$_}->{path}\n";
+		my $dir = $paths->{$_}->{path};
+		$dir =~ s/\/[^\/]+?\.\w+?$//;
+		if (! -d $dir) {
+			make_path($dir) }
+		open  (FILE, ">", $paths->{$_}->{path}) || warn '!!! output file '. $paths->{$_}->{path}.' could not be created !!!';
+		print FILE  $paths->{$_}->{content}."\n";
+		close FILE;
+		
+	}
   
 }
 

@@ -9,6 +9,12 @@ categories:
   - schemas
   - howto
 tools_repo: tools
+status_levels:
+  - playground
+  - community
+  - proposed
+  - implemented
+  - core
 schema_repos: # project directories on the same level as the `tools` repo
   - project_dir: blocks
     schema_dirs:
