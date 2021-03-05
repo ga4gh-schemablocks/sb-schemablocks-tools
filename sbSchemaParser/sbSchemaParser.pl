@@ -23,7 +23,7 @@ my $podmd = catfile($config->{git_root_dir}, $config->{podmd});
 
 # command line input
 my %args = @ARGV;
-$args{-filter} ||= q{};
+$args{-filter} ||= undef;
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
 _process_src($config);
@@ -51,9 +51,8 @@ sub _process_src {
 			# the name of the schema dir is extracted from the $id path, unless it has
 			# been specified in the config, as `target_doc_dirname`.
 			my $target_doc_dirname = "";			
-			if (grep{ /^target_doc_dirname$/ } keys %{ $src_repo }) {
-				$target_doc_dirname = $src_repo->{target_doc_dirname};
-			}
+			if ( defined $src_repo->{target_doc_dirname} ) {
+				$target_doc_dirname = $src_repo->{target_doc_dirname} }
 					
 			opendir DIR, $src_path;
 			foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
@@ -66,7 +65,7 @@ sub _process_src {
 					doc_dirname => $target_doc_dirname
 				};
 				
-				if ($config->{args}->{-filter} =~ /.../) {
+				if (defined $config->{args}->{-filter}) {
 					if ($schema !~ /$config->{args}->{-filter}/) {
 						next } }
 
@@ -468,7 +467,7 @@ descriptions and examples.
 
 * type: $label
 END
-		if (grep {/value/} keys %{ $data->{properties}->{$property} } ) {	
+		if ( defined $data->{properties}->{$property}->{value} ) {	
 			$md .=  "* value: ".$data->{properties}->{$property}->{value}."  \n\n" }
 
 		$md .= <<END;
