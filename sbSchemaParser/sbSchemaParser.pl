@@ -297,7 +297,7 @@ The class "$id" values are assumed to have a specific structure, where
 
 	_check_class_name($paths->{class}, $fileClass);
 
-	$paths->{outfile_exmpls_json}   =   {
+	$paths->{outfile_exmpls_json} = {
 		path =>  catfile(
 			$config->{git_root_dir},
 			$paths->{schema_repo},                      
@@ -306,7 +306,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => JSON::XS->new->pretty( 1 )->canonical()->encode( $data->{examples} ),
 	};
-	$paths->{outfile_plain_md}  =   {
+	$paths->{outfile_plain_md} = {
 		path =>  catfile(
 			$config->{git_root_dir},
 			$paths->{schema_repo},
@@ -315,7 +315,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => q{}
 	};
-	$paths->{outfile_src_json_current}  =   {
+	$paths->{outfile_src_json_current} = {
 		path =>  catfile(
 			$config->{git_root_dir},
 			$paths->{schema_repo},
@@ -325,7 +325,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
-	$paths->{outfile_src_json_versioned}  =   {
+	$paths->{outfile_src_json_versioned} = {
 		path =>  catfile(
 			$config->{git_root_dir},
 			$paths->{schema_repo},
@@ -335,7 +335,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
-	$paths->{outfile_web_src_json_current}  =   {
+	$paths->{outfile_web_src_json_current} = {
 		path =>  catfile(
 		$config->{git_root_dir},
 		$config->{webdocs}->{repo},
@@ -346,7 +346,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
-	$paths->{outfile_web_src_json_versioned}  =   {
+	$paths->{outfile_web_src_json_versioned} = {
 		path =>  catfile(
 			$config->{git_root_dir},
 			$config->{webdocs}->{repo},
@@ -357,7 +357,7 @@ The class "$id" values are assumed to have a specific structure, where
 		),
 		content => JSON::XS->new->pretty( 1 )->canonical()->allow_nonref->encode($data),
 	};
-	$paths->{outfile_jekyll_current_md}   =   {
+	$paths->{outfile_jekyll_current_md} = {
 		path => catfile(
 		$config->{git_root_dir},
 		$config->{webdocs}->{repo},
@@ -381,7 +381,7 @@ The class "$id" values are assumed to have a specific structure, where
 		$paths->{schema_dir},
 		$paths->{schema_file}
 	);
-	$paths->{web_link_json}   =   join('/',
+	$paths->{web_link_json} = join('/',
 		$config->{webdocs}->{web_schemas_rel},
 		$doc_dirname,
 		'current',
@@ -617,8 +617,8 @@ specifications right now) which would being reduced to one
 
 =cut
 
-	my $prop_data =   shift;
-	my $prop      =   {};
+	my $prop_data = shift;
+	my $prop = {};
 
 	if (ref($prop_data) !~ /HASH/) {
 		return $prop_data }
