@@ -1,4 +1,4 @@
-## tools
+## Schemablocks Tools
 
 Tools for managing the {S}[B] repositories and website
 
