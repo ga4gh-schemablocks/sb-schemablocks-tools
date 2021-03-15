@@ -8,10 +8,17 @@ The `sbSchemaParser.pl` script is used to process schema files written in
 *JSON Schema* (YAML version) into human-readable documentation (e.g. Markdown files for Jekyll
 based HTML generation) and JSON data files from the embedded examples.
 
-Directives for source and target directories can be modified in the `config.yaml` file in the script's directory. The general repository structures for the 
-repositories which are being parsed by _sbSchemaParser_ is shown below.
+* [Documentation](./sbSchemaParser.md)
 
-#### {S}[B] Repositories
+### sbOpenAPIparser
+
+The `sbOpenAPIparser.py` script processes OpenAPI-style JSCON Schema files (as
+e.g. used in the [Beacon](http://github.com/ga4gh-beacon/)) project) into their
+single schema "components", for processing further with _sbSchemaParser_.
+
+* [Documentation](./sbOpenAPIparser.md)
+
+### {S}[B] Repositories
 
 {S}[B] code repositories adhere a consistent structure & naming:
 
@@ -30,12 +37,14 @@ sb-code           # each of the code repositories
 Here  
 
 * The `source` and `working` directories are optional.
-* The `json`, `examples` and `doc` directories are populated by the _sbSchemaParser_
+* The `json`, `examples` and `doc` directories are populated by _sbSchemaParser_.
 
-##### Website Files
+### Website Files
 
-The _sbSchemaParser_ also generates copies of the `myschema.json` files into 
-the canonical website directory, and a GH-pages version of the Markdown documentation file into the `pages` tree processed by the GH-pages "Jekyll" processing engine. The .md file contains a `permalink` directive in its YAML 
+_sbSchemaParser_ also generates copies of the `myschema.json` files into 
+the canonical website directory, and a GH-pages version of the Markdown
+documentation file into the `pages` tree processed by the GH-pages "Jekyll"
+processing engine. The .md file contains a `permalink` directive in its YAML 
 header, which will lead to GH-pages placing the HTML page at  "https://schemablocks.org/schemas/ga4gh/myschema.html".
 
 ```

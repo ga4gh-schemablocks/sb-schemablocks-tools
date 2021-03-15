@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3
 
-import sys, yaml, re
+import sys, re
+from ruamel.yaml import YAML
 from os import path as path
 import argparse
 
@@ -27,14 +28,10 @@ podmd"""
 def _get_args():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--outdir", help="path to the output directory")
-    parser.add_argument("-f", "--schemafile", help="OpenAPI schema file to be ripped apart")
-    parser.add_argument("-m", "--headerfile", help="SchemaBlocks format metadata header")
-    parser.add_argument("-p", "--project", help="Project id")
-
+    parser.add_argument("-c", "--config", help="path to the sbOpenAPIparser.yaml configuration file")
     args = parser.parse_args()
 
-    return(args)
+    return args
 
 ################################################################################
 
@@ -47,7 +44,8 @@ def main():
     schema.
 
     This schema is updated with metadata, either from a provided SchemaBlocks
-    header file or with a default from `config.yaml`.
+    header file or with a default from a configuration file (e.g.
+    `sbOpenAPIparser.yaml`).
 
     Some of the parameter values are adjusted (which probably will have to be
     expanded for different use cases); e.g. the internal reference paths
@@ -56,18 +54,25 @@ def main():
 
     end_podmd"""
 
-    with open( path.join( path.abspath( dir_path ), "config.yaml" ) ) as cf:
-        config = yaml.load( cf , Loader=yaml.FullLoader)
+    cff = _get_config_path(dir_path, _get_args())
 
-    args = _get_args()
-    config = _check_args(config, args)
+    yaml = YAML()
+    yaml.indent(mapping=2, sequence=4, offset=2)
+
+    try:
+        with open( cff ) as cf:
+            config = yaml.load( cf )
+    except Exception as e:
+        print("Error loading the config file ({}): {}".format(cff, e) )
+        exit()
+
+    config.update( { "config_base_path": path.dirname(cff) } )
+    _check_config(config)
 
     with open( config[ "schemafile" ] ) as f:
-        oas = yaml.load( f , Loader=yaml.FullLoader)
+        oas = yaml.load( f )
 
-    if path.isfile( config[ "headerfile" ] ):
-        with open( config[ "headerfile" ] ) as f:
-            config.update( { "header": yaml.load( f , Loader=yaml.FullLoader) } )
+    _config_add_project_specs(config, oas)
 
     for s_name in oas["components"]["schemas"].keys():
 
@@ -75,12 +80,8 @@ def main():
         print(f_name)
 
         s = oas["components"]["schemas"][ s_name ]
-
-        s = _add_header(config, s)
-        s = _add_project_specs(oas, s)
-        s = _fix_relative_ref_paths(s)
-
-        s[ "title" ] = s_name
+        _add_header(config, s, s_name)
+        _fix_relative_ref_paths(s)
 
         if "$id" in s:
             s[ "$id" ] = re.sub( r"__schema__", s_name, s[ "$id" ] )
@@ -92,58 +93,87 @@ def main():
 
 ################################################################################
 
-def _check_args(config, args):
+def _get_config_path(dir_path, args):
 
-    if config[ "outdir" ]:
-        config[ "outdir" ] = path.join( path.abspath( dir_path ), path.abspath( dir_path ), config[ "outdir" ])
-    if config[ "schemafile" ]:
-        config[ "schemafile" ] = path.join( path.abspath( dir_path ), path.abspath( dir_path ), config[ "schemafile" ])
+    cfp = path.join( path.abspath( dir_path ), "sbOpenAPIparser.yaml")
+    if vars(args)["config"]:
+        cfp = path.abspath( vars(args)["config"] )
 
-    for a in vars(args).keys():
-        if vars(args)[a]:
-            config[ a ] = vars(args)[a]
-
-    if not config[ "project" ]:
-        print("No project name has been provided; please use `-p` to specify")
+    if not path.isfile( cfp ):
+        print("""
+The configuration file:
+    {}
+...does not exist; please use a correct "-c" parameter".
+""".format(cfp))
         sys.exit( )
+       
+    return cfp
+
+################################################################################
+
+def _check_config(config):
+
+    for p in ["schemafile", "outdir", "project"]:
+        if not p in config:
+            print('No {} parameter has been provided the configuration file => exiting.'.format(p))
+            sys.exit( )
+
+    config.update({ "outdir": path.join( config[ "config_base_path" ], config[ "outdir" ]) } )
+    config.update({ "schemafile": path.join( config[ "config_base_path" ], config[ "schemafile" ]) } )
 
     if not path.isdir( config[ "outdir" ] ):
         print("""
 The output directory:
     {}
-...does not exist; please use `-o` to specify
+...does not exist; please use a correct relative path in the configuration file.
 """.format(config[ "outdir" ]))
         sys.exit( )
 
     if not path.isfile( config[ "schemafile" ] ):
-        print("No inputfile has ben given; please use `-f` to specify")
+        print("""
+The input file:
+    {}
+...does not exist; please use a correct relative path in the configuration file.
+""".format(config[ "outdir" ]))
         sys.exit( )
 
-    return(config)
+    return config
 
 ################################################################################
 
-def _add_header(config, s):
+def _config_add_project_specs(config, oas):
 
-    for p in config[ "header" ]:
-        s[ p ] = config[ "header" ][ p ]
-
-    return(s)
-
-################################################################################
-
-def _add_project_specs(oas, s):
+    h_k_n = len( config["header"].keys() )
 
     if "info" in oas:
         if "version" in oas[ "info" ]:
-            s[ "version" ] = oas[ "info" ][ "version" ]
-            s[ "$id" ] = re.sub( r"__version__", s[ "version" ], s[ "$id" ] )
+            config["header"].update( { "$id" : re.sub( r"__schemaversion__", oas["info"][ "version" ], config["header"]["$id" ]) } )
+            config["header"].insert(h_k_n, "version", oas["info"][ "version" ])
 
-    return(s)
+    return config
+
+################################################################################
+
+def _add_header(config, s, s_name):
+
+    pos = 0
+
+    for k, v in config[ "header" ].items():
+        s.insert(pos, k, v)
+        pos += 1
+
+    s.insert(pos, "title", s_name)
+
+    return s
 
 ################################################################################
 
 def _fix_relative_ref_paths(s):
+
+    """podmd
+    The path fixes here are very much "experience driven" and should be replaced
+    with a more systematic version, including existence & type checking ...
+    podmd"""
 
     properties = s
     if "properties" in s:
@@ -152,17 +182,27 @@ def _fix_relative_ref_paths(s):
     for p in properties.keys():
 
         if '$ref' in properties[ p ]:
-            properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', './', properties[ p ][ '$ref' ] )
+            properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ '$ref' ] ) + '.yaml#/'
         if 'items' in properties[ p ]:
             if '$ref' in properties[ p ][ "items" ]:
-                properties[ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', './', properties[ p ][ "items" ][ '$ref' ] )
+                properties[ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ "items" ][ '$ref' ] ) + '.yaml#/'
 
         if "properties" in s:
             s[ "properties" ].update( { p: properties[ p ] } )
         else:
             s.update( { p: properties[ p ] } )
 
-    return(s)
+    if "oneOf" in s:
+        o_o = [ ]
+        for o in s[ "oneOf" ]:
+            if "$ref" in o.keys():
+                v = re.sub( '#/components/schemas/', '', o["$ref"] ) + '.yaml#/'
+                o_o.append( { "$ref": v} )
+            else:
+                o_o.append( o )
+        s.update( { "oneOf": o_o } )
+
+    return s
 
 ################################################################################
 ################################################################################
