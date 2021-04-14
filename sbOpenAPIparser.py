@@ -182,10 +182,12 @@ def _fix_relative_ref_paths(s):
     for p in properties.keys():
 
         if '$ref' in properties[ p ]:
-            properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ '$ref' ] ) + '.yaml#/'
+            if not "http" in properties[ p ][ '$ref' ]:
+                properties[ p ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ '$ref' ] ) + '.yaml#/'
         if 'items' in properties[ p ]:
             if '$ref' in properties[ p ][ "items" ]:
-                properties[ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ "items" ][ '$ref' ] ) + '.yaml#/'
+                if not "http" in properties[ p ][ "items" ][ '$ref' ]:
+                    properties[ p ][ "items" ][ '$ref' ] = re.sub( '#/components/schemas/', '', properties[ p ][ "items" ][ '$ref' ] ) + '.yaml#/'
 
         if "properties" in s:
             s[ "properties" ].update( { p: properties[ p ] } )
@@ -196,8 +198,9 @@ def _fix_relative_ref_paths(s):
         o_o = [ ]
         for o in s[ "oneOf" ]:
             if "$ref" in o.keys():
-                v = re.sub( '#/components/schemas/', '', o["$ref"] ) + '.yaml#/'
-                o_o.append( { "$ref": v} )
+                if not "http" in o["$ref"]:
+                    o["$ref"] = re.sub( '#/components/schemas/', '', o["$ref"] ) + '.yaml#/'
+                o_o.append( { "$ref": o["$ref"]} )
             else:
                 o_o.append( o )
         s.update( { "oneOf": o_o } )
