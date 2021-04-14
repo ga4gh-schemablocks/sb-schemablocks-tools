@@ -129,14 +129,16 @@ sub _process_src {
 					next } }
 					
 			if (defined $src_repo->{include_matches}) {
-				print "=> Filtering for include_matches\n";
-				if (! grep{ $schema =~ /$_/ } @{ $src_repo->{include_matches} }) {
-					next } }
+				if (grep{ /./ }  @{ $src_repo->{include_matches} } ) {
+					print "=> Filtering for include_matches\n";
+					if (! grep{ $schema =~ /$_/ } @{ $src_repo->{include_matches} }) {
+						next } } }
 					
 			if (defined $src_repo->{exclude_matches}) {
-				print "=> Filtering for exclude_matches\n";
-				if (grep{ $schema =~ /$_/ } @{ $src_repo->{exclude_matches} }) {
-					next } }						
+				if (grep{ /./ }  @{ $src_repo->{exclude_matches} } ) {
+					print "=> Filtering for exclude_matches\n";
+					if (grep{ $schema =~ /$_/ } @{ $src_repo->{exclude_matches} }) {
+						next } } }						
 
 			$config->_process_yaml($paths);
 
@@ -158,6 +160,9 @@ sub _process_yaml {
 	
 	print "Reading YAML file \"$paths->{schema_file_path}\"\n";
 
+	my @errors = ();
+	my @warnings = ();
+
 	my $data = LoadFile($paths->{schema_file_path});
 	
 =podmd
@@ -167,14 +172,18 @@ TODO: merge meta entries
 =cut
 	
 	if ( defined $paths->{meta_header_filename} ) {
-		my $meta = LoadFile(
-			catfile(
-				$paths->{schema_dir_path},
-				$paths->{meta_header_filename}
-			)
-		);
-		$data->{meta} = $meta->{meta};
-	}
+		if ( $paths->{meta_header_filename} =~ /\w\.\w/ ) {
+			if (-f $paths->{meta_header_filename}) {
+				my $meta = LoadFile(
+					catfile(
+						$paths->{schema_dir_path},
+						$paths->{meta_header_filename}
+					)
+				);
+				$data->{meta} = $meta->{meta};			
+			} else {
+				push(@warnings, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
+	} }
 			
 =podmd
 The class name is derived from the file's "$id" value, assuming a canonical 
@@ -189,17 +198,14 @@ does not match.
 
 =cut
 
-	my @errors = ();
-	my @warnings = ();
-
 	$paths->_create_file_paths($config, $data);
 
 	if ($data->{title} !~ /^\w[\w\.\-]+?$/) {
-		push(@errors, '¡¡¡ No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
+		push(@errors, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
 
 	if (defined $config->{status_levels}) {
 		if (! grep{ /^$data->{meta}->{sb_status}$/ } @{ $config->{status_levels} }) {
-			push(@warnings, '¡¡¡ No correct "sb_status" value in '.$paths->{schema_file_name}.' !!!') }
+			push(@warnings, '!!! No correct "sb_status" value in '.$paths->{schema_file_name}.' !!!') }
 	}
 		
 	if (@errors > 0) {
