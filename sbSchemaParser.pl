@@ -87,63 +87,70 @@ sub _process_src {
 	foreach my $src_repo (@{ $config->{schema_repos} }) {
 	
 		my $repo_path = catdir( $config->{git_root_dir}, $src_repo->{schema_repo} );
-		my $src_path = catdir( $repo_path, $src_repo->{schema_dir_name} );
 		my $out_path = catdir( $repo_path, $src_repo->{out_dir_name} );
-				
-		if (defined $config->{args}->{-filter}) {
-			print "=> Filtering for $config->{args}->{-filter}\n" }
-		
-		# the name of the schema dir is extracted from the $id path, unless it has
-		# been specified in the config, as `target_doc_dirname`.
-		my $target_doc_dirname = "";			
-		if ( defined $src_repo->{target_doc_dirname} ) {
-			$target_doc_dirname = $src_repo->{target_doc_dirname} }
-			
-		opendir DIR, $src_path;
-		foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
 
-			my $paths = {
-				schema_repo_path => $repo_path,
-				schema_dir_path => $src_path,
-				schema_out_path => $out_path,
-				schema_file_name => $schema,
-				schema_file_path => catfile($src_path, $schema),
-				schema_dir_name => $src_repo->{schema_dir_name},
-				schema_repo => $src_repo->{schema_repo},
-				doc_dirname => $target_doc_dirname,
-				web_schema_repo_path => $web_schema_path,
-				web_jekyll_path => $web_jekyll_path,
-			};
-			
-			if ( defined $src_repo->{meta_header_filename} ) {
-				$paths->{meta_header_filename} = $src_repo->{meta_header_filename} }
-			
-			if ( defined $src_repo->{tags} ) {
-				$paths->{schema_tags} = $src_repo->{tags} }
+		if (defined $src_repo->{schema_dir_name}) {
+			$src_repo->{schema_dirs} = [ [ $src_repo->{schema_dir_name} ] ] }
 
-			if ( defined $src_repo->{categories} ) {
-				$paths->{schema_categories} = $src_repo->{categories} }
-			
+		foreach (@{ $src_repo->{schema_dirs} } ) {
+
+			my $src_path = catdir( $repo_path, @$_ );
+					
 			if (defined $config->{args}->{-filter}) {
-				if ($schema !~ /$config->{args}->{-filter}/) {
-					next } }
-					
-			if (defined $src_repo->{include_matches}) {
-				if (grep{ /./ }  @{ $src_repo->{include_matches} } ) {
-					print "=> Filtering for include_matches\n";
-					if (! grep{ $schema =~ /$_/ } @{ $src_repo->{include_matches} }) {
-						next } } }
-					
-			if (defined $src_repo->{exclude_matches}) {
-				if (grep{ /./ }  @{ $src_repo->{exclude_matches} } ) {
-					print "=> Filtering for exclude_matches\n";
-					if (grep{ $schema =~ /$_/ } @{ $src_repo->{exclude_matches} }) {
-						next } } }						
+				print "=> Filtering for $config->{args}->{-filter}\n" }
+			
+			# the name of the schema dir is extracted from the $id path, unless it has
+			# been specified in the config, as `target_doc_dirname`.
+			my $target_doc_dirname = "";			
+			if ( defined $src_repo->{target_doc_dirname} ) {
+				$target_doc_dirname = $src_repo->{target_doc_dirname} }
+				
+			opendir DIR, $src_path;
+			foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
 
-			$config->_process_yaml($paths);
+				my $paths = {
+					schema_repo_path => $repo_path,
+					schema_dir_path => $src_path,
+					schema_out_path => $out_path,
+					schema_file_name => $schema,
+					schema_file_path => catfile($src_path, $schema),
+					schema_dir_name => $src_repo->{schema_dir_name},
+					schema_repo => $src_repo->{schema_repo},
+					doc_dirname => $target_doc_dirname,
+					web_schema_repo_path => $web_schema_path,
+					web_jekyll_path => $web_jekyll_path,
+				};
+				
+				if ( defined $src_repo->{meta_header_filename} ) {
+					$paths->{meta_header_filename} = $src_repo->{meta_header_filename} }
+				
+				if ( defined $src_repo->{tags} ) {
+					$paths->{schema_tags} = $src_repo->{tags} }
 
+				if ( defined $src_repo->{categories} ) {
+					$paths->{schema_categories} = $src_repo->{categories} }
+				
+				if (defined $config->{args}->{-filter}) {
+					if ($schema !~ /$config->{args}->{-filter}/) {
+						next } }
+						
+				if (defined $src_repo->{include_matches}) {
+					if (grep{ /./ }  @{ $src_repo->{include_matches} } ) {
+						print "=> Filtering for include_matches\n";
+						if (! grep{ $schema =~ /$_/ } @{ $src_repo->{include_matches} }) {
+							next } } }
+						
+				if (defined $src_repo->{exclude_matches}) {
+					if (grep{ /./ }  @{ $src_repo->{exclude_matches} } ) {
+						print "=> Filtering for exclude_matches\n";
+						if (grep{ $schema =~ /$_/ } @{ $src_repo->{exclude_matches} }) {
+							next } } }						
+
+				$config->_process_yaml($paths);
+
+			}
+			close DIR;
 		}
-		close DIR;
 
 }}
 
@@ -166,24 +173,13 @@ sub _process_yaml {
 	my $data = LoadFile($paths->{schema_file_path});
 	
 =podmd
-If a `meta_header_filename` is provided for this schema, its `meta` root parameter
-is used to replace the schema's `meta`.
+If a `meta_header` is provided for this schema it is used to replace the
+schema's `meta`.
 TODO: merge meta entries
 =cut
 	
-	if ( defined $paths->{meta_header_filename} ) {
-		if ( $paths->{meta_header_filename} =~ /\w\.\w/ ) {
-			if (-f $paths->{meta_header_filename}) {
-				my $meta = LoadFile(
-					catfile(
-						$paths->{schema_dir_path},
-						$paths->{meta_header_filename}
-					)
-				);
-				$data->{meta} = $meta->{meta};			
-			} else {
-				push(@warnings, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
-	} }
+	if ( defined $config->{defaults}->{meta_header} ) {
+				$data->{meta} = $config->{defaults}->{meta_header} }
 			
 =podmd
 The class name is derived from the file's "$id" value, assuming a canonical 
@@ -372,11 +368,20 @@ The class "$id" values are assumed to have a specific structure, where
 	my $config = shift;
 	my $data = shift;
 
-	my @id_comps = split('/', $data->{'$id'}); 
-	$paths->{version} = pop @id_comps;
-	$paths->{class} = pop @id_comps;
-	$paths->{project} = pop @id_comps;
-	
+	my $fileClass = $paths->{schema_file_name};
+	$fileClass =~ s/\.\w+?$//;
+
+	if (! defined $data->{'$id'}) {
+		$paths->{version} = $config->{defaults}->{version};
+		$paths->{class} = $fileClass;
+		$paths->{project} = $config->{defaults}->{project};		
+	} else {
+		my @id_comps = split('/', $data->{'$id'}); 
+		$paths->{version} = pop @id_comps;
+		$paths->{class} = pop @id_comps;
+		$paths->{project} = pop @id_comps;		
+	}
+
 	my $doc_dirname = $paths->{project};
 	
 	if ($paths->{doc_dirname} =~ /^\w[^\/]+?\w$/) {
@@ -385,9 +390,7 @@ The class "$id" values are assumed to have a specific structure, where
 	if (! $data->{examples}) {
 		$data->{examples} = [] }
 
-	my $fileClass = $paths->{schema_file_name};
-	$fileClass =~ s/\.\w+?$//;
-
+	# this has now been changed to allow the file name (which would )
 	if (! _check_class_name($paths->{class}, $fileClass)) {
 		print "\n¡¡¡ Skipping $fileClass !!!\n\n";
 		return;
@@ -494,15 +497,13 @@ sub _check_class_name {
   if ($sbClass ne $fileClass) {
     print <<END;
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 Mismatch between file name
   $fileClass
 and class name from "\$id" parameter
   $sbClass
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 END
-	return \0;
+		return \0;
   }
   return $fileClass;
 }
