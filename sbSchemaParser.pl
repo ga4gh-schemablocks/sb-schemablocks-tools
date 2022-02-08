@@ -198,20 +198,24 @@ does not match.
 
 =cut
 
-	$paths->_create_file_paths($config, $data);
-
-	if ($data->{title} !~ /^\w[\w\.\-]+?$/) {
-		push(@errors, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
+	# if ($data->{title} !~ /^\w[\w\.\-]+?$/) {
+	# 	push(@errors, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
 
 	if (defined $config->{status_levels}) {
 		if (! grep{ /^$data->{meta}->{sb_status}$/ } @{ $config->{status_levels} }) {
-			push(@warnings, '!!! No correct "sb_status" value in '.$paths->{schema_file_name}.' !!!') }
+			push(@warnings, '!!! No correct "sb_status" value in '.$paths->{schema_file_name}.' !!!');
+			if (defined $config->{defaults}->{status_level}) {
+				$data->{meta}->{sb_status} = $config->{defaults}->{status_level} }
+		}
 	}
 		
 	if (@errors > 0) {
 		print "\n".join("\n", @errors)."\n";
 		return;
 	}
+
+	$paths->_create_file_paths($config, $data);
+
 	if (@warnings > 0) {
 		print "\n".join("\n", @warnings)."\n" }
 
