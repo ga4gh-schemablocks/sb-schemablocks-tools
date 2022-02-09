@@ -26,7 +26,7 @@ bless $config;
 
 foreach (keys %args) { $config->{args}->{$_} = $args{$_} }
 
-my($filename, $dirs, $suffix) = fileparse($cff);
+my ($filename, $dirs, $suffix) = fileparse($cff);
 
 $config->{dir_path} = $dirs;
 $config->{git_root_dir} = realpath(catdir($config->{dir_path}, @{$config->{organization_root_path_comps}}));
@@ -88,6 +88,10 @@ sub _process_src {
 	
 		my $repo_path = catdir( $config->{git_root_dir}, $src_repo->{schema_repo} );
 		my $out_path = catdir( $repo_path, $src_repo->{out_dir_name} );
+
+		my $branch = "main";
+		if (defined $src_repo->{branch}) {
+			$branch = $src_repo->{branch} }
 
 		if (defined $src_repo->{schema_dir_name}) {
 			$src_repo->{schema_dirs} = [ [ $src_repo->{schema_dir_name} ] ] }
