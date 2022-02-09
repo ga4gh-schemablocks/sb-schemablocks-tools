@@ -183,21 +183,21 @@ schema's `meta`.
 TODO: merge meta entries
 =cut
 
+	if ( defined $config->{defaults}->{meta_header} ) {
+			$data->{meta} = $config->{defaults}->{meta_header} }
+
+	# the other option is to override the overall meta from a schema_repo specific
+	# file
 	if ( defined $paths->{meta_header_filename} ) {
 		if ( $paths->{meta_header_filename} =~ /\w\.\w/ ) {
-			if (-f $paths->{meta_header_filename}) {
-				my $meta = LoadFile(
-					catfile(
-						$config->{dir_path},
-						$paths->{meta_header_filename}
-					)
-				);
+			my $mf = catfile( $config->{dir_path}, $paths->{meta_header_filename} );
+			if (-f $mf) {
+				my $meta = LoadFile($mf);
 				$data->{meta} = $meta->{meta};			
 			} else {
 				push(@warnings, '!!! No correct meta header file in '.$paths->{meta_header_filename}.'!') }
 		}
-	} elsif ( defined $config->{defaults}->{meta_header} ) {
-			$data->{meta} = $config->{defaults}->{meta_header} }
+	}
 			
 =podmd
 The class name is derived from the file's "$id" value, assuming a canonical 
