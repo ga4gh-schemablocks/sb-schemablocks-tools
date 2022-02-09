@@ -68,6 +68,7 @@ defaults:
 
 schema_repos:
   - schema_repo: sb-beacon-api
+    branch: main
     tags:
       - Beacon-v2
       - beacon
