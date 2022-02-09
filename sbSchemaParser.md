@@ -21,7 +21,7 @@ Paths for input and output directories are specified in the configuration YAML
 file as *relative to the configuration file*. The only assumption there is the
 existence of a shared root directory for schema repositories and website repo.
 
-The script is executed -from any location - with
+The script is executed - from any location - with
 
 ```
 perl sbSchemaParser.pl -c __path_to_configuration_file__
@@ -29,7 +29,8 @@ perl sbSchemaParser.pl -c __path_to_configuration_file__
 
 The only additional option is to provide a "-filter" argument against the schema 
 file names; e.g. `perl sbSchemaParser.pl -filter Age -c ...` will only process
-schemas with "Age" in their file name.
+schemas with "Age" in their file name. Additionally, the configuration file allows
+to exclude files from processing.
 
 #### Example configuration
 
