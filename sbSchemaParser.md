@@ -36,54 +36,92 @@ to exclude files from processing.
 
 ```
 ---
-github_organisation: ga4gh-beacon
+github_organisation: ga4gh-schemablocks
 site_domain_name: beacon-project.io
 url: 'https://beacon-project.io'
 organization_root_path_comps:
-  - ".."
-  - ".."
+  - ..
+  - ..
+status_levels:
+  - playground
+  - community
+  - proposed
+  - implemented
+  - core
+
+defaults:
+  version: 2.0.0-draft.4
+  project: sb-beacon-api
+  meta_header:
+    contributors:
+      - label: ELIXIR Beacon project team
+        id: https://beacon-project.io/categories/people.html
+    provenance:
+      - label: Beacon v2 provisional version
+        id: https://github.com/ga4gh-beacon/
+    used_by:
+      - label: Beacon v2 frontline implementers
+        id: https://ga4gh-approval-service-registry.ega-archive.org
+      - label: Progenetix database schema (Beacon+ backend)
+        id: https://docs.progenetix.org/beaconplus/
+    sb_status: proposed
+
 schema_repos:
-  - schema_repo: "specification-v2-blocks"
+  - schema_repo: sb-beacon-api
     tags:
-      - "v2"
-      - "beacon"
-      - "schemas"
+      - Beacon-v2
+      - beacon
+      - schemas
     categories:
-      - "specification"
-    schema_dir_name: "schemas"
-    out_dir_name: "generated"
-    target_doc_dirname: "beacon-v2"
-#    include_matches: [ ]
-#    exclude_matches: [ ]
+      - specification
+    schema_dirs:
+      - [ "schemas", "framework", "common" ]
+      - [ "schemas", "framework", "configuration" ]
+      - [ "schemas", "framework", "requests" ]
+      - [ "schemas", "framework", "responses" ]
+      - [ "schemas", "models", "analyses" ]
+      - [ "schemas", "models", "biosamples" ]
+      - [ "schemas", "models", "cohorts" ]
+      - [ "schemas", "models", "common" ]
+      - [ "schemas", "models", "datasets" ]
+      - [ "schemas", "models", "genomicVariations" ]
+      - [ "schemas", "models", "individuals" ]
+      - [ "schemas", "models", "runs" ]
+    out_dir_name: generated
+    target_doc_dirname: sb-beacon-api
+    include_matches: [ ]
+    exclude_matches: [ "endpoints" ]
+    meta_header_filename: ""
+
 out_dirnames:
   json: json
   markdown: doc
   examples: examples
+
 webdocs:
-  repo: "ga4gh-beacon.github.io"
+  repo: 'ga4gh-schemablocks.github.io'
   jekyll_path_comps:
-    - "pages"
-    - "_schemas"
+    - pages
+    - _schemas
   schemadir: 'schemas'
   web_schemas_rel: "/schemas"
   web_html_rel: "/schemas"
+
 generator_prefix: '+generated__'
+
 schema_disclaimer: >
   <div id="schema-footer">
   This schema representation is for information purposes. The authorative 
   version remains with the developing project (see "provenance").
   </div>
+
 jekyll_excerpt_separator: "<!--more-->"
+
 prefix_expansions:
   orcid: 'https://orcid.org/'
   PMID: 'https://www.ncbi.nlm.nih.gov/pubmed/'
   github: 'https://github.com/'
-status_levels:
-  - "playground"
-  - "community"
-  - "proposed"
-  - "implemented"
-  - "core"
+
 links:
   sb_status_levels: "https://schemablocks.org/about/sb-status-levels.html"
 ```
