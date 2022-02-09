@@ -94,7 +94,8 @@ sub _process_src {
 
 		foreach (@{ $src_repo->{schema_dirs} } ) {
 
-			my $src_path = catdir( $repo_path, @$_ );
+			my $path_comp = catdir( @$_ );
+			my $src_path = catdir( $repo_path, $path_comp );
 					
 			if (defined $config->{args}->{-filter}) {
 				print "=> Filtering for $config->{args}->{-filter}\n" }
@@ -114,7 +115,7 @@ sub _process_src {
 					schema_out_path => $out_path,
 					schema_file_name => $schema,
 					schema_file_path => catfile($src_path, $schema),
-					schema_dir_name => $src_repo->{schema_dir_name},
+					schema_dir_name => $path_comp,
 					schema_repo => $src_repo->{schema_repo},
 					doc_dirname => $target_doc_dirname,
 					web_schema_repo_path => $web_schema_path,
