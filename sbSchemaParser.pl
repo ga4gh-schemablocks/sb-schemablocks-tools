@@ -113,11 +113,15 @@ sub _process_src {
 			opendir DIR, $src_path;
 			foreach my $schema (grep{ /ya?ml$/ } readdir(DIR)) {
 
+				my $schema_name = $schema;
+				$schema_name =~ s/\.\w+$//;
+
 				my $paths = {
 					schema_repo_path => $repo_path,
 					schema_dir_path => $src_path,
 					schema_out_path => $out_path,
 					schema_file_name => $schema,
+					schema_name => $schema_name,
 					schema_file_path => catfile($src_path, $schema),
 					schema_dir_name => $path_comp,
 					schema_repo => $src_repo->{schema_repo},
@@ -212,8 +216,10 @@ does not match.
 
 =cut
 
-	# if ($data->{title} !~ /^\w[\w\.\-]+?$/) {
-	# 	push(@errors, '!!! No correct "title" value in schema '.$paths->{schema_file_name}.'!') }
+	if ($data->{title} !~ /\w/) {
+		push(@warnings, 'No "title" value in schema '.$paths->{schema_file_name}.' - using '.$paths->{schema_name}.' !');
+		$data->{title} = $paths->{schema_name};
+	}
 
 	if (defined $config->{status_levels}) {
 		if (! grep{ /^$data->{meta}->{sb_status}$/ } @{ $config->{status_levels} }) {
@@ -873,7 +879,7 @@ sub _export_outfiles {
 	
 	foreach (grep{ /outfile_/} keys %{ $paths }) {
 
-		print "\n=> $paths->{$_}->{path}\n";
+		print "=> $paths->{$_}->{path}\n";
 		my $dir = $paths->{$_}->{path};
 		$dir =~ s/\/[^\/]+?\.\w+?$//;
 		if (! -d $dir) {
